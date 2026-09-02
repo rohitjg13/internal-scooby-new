@@ -13,7 +13,7 @@
 	} from "$lib/mySchedule";
 	import { loadState as loadGpa } from "$lib/gpa/storage";
 	import { computeCGPA, cgpaFromSgpa } from "$lib/gpa/calculator";
-	import { courseTotals, statsFor, type Course as AttCourse } from "$lib/attendance";
+	import { stats as attStats, type Course as AttCourse } from "$lib/attendance";
 	import { remainingDays, totalDays, TEACHING_DAYS, WEEKDAYS } from "$lib/semester";
 	import {
 		loadTracker,
@@ -137,11 +137,13 @@
 
 	/* ---- widget data (all read from what the other pages already saved) ---- */
 	let gpa = $state<{ cgpa: number; credits: number } | null>(null);
+	// Attendance is judged per course, never pooled: 80% across everything
+	// still gets you debarred from the one course sitting at 60%. So the
+	// widget lists the courses, and there is no overall figure.
 	let att = $state<{
-		current: number | null;
 		target: number;
-		canSkip: number;
-		worst: { name: string; pct: number } | null;
+		courses: { name: string; pct: number | null; canSkip: number }[];
+		below: number;
 	} | null>(null);
 	type MinorWidget = {
 		slug: string;
@@ -201,27 +203,20 @@
 			if (!named.length) return null;
 			const target = v.target ?? 75;
 
-			const sum = named.reduce(
-				(t, c) => {
-					const x = courseTotals(c);
-					return {
-						attended: t.attended + x.attended,
-						missed: t.missed + x.missed,
-						remaining: t.remaining + x.remaining,
-					};
-				},
-				{ attended: 0, missed: 0, remaining: 0 },
-			);
-			const overall = statsFor(sum.attended, sum.missed, sum.remaining, target);
+			// Worst first — the course about to debar you is the one you came
+			// to the dashboard to see.
+			const courses = named
+				.map((c) => {
+					const s = attStats(c, target);
+					return { name: c.name.trim(), pct: s.current, canSkip: s.canSkip };
+				})
+				.sort((a, b) => (a.pct ?? 101) - (b.pct ?? 101));
 
-			let worst: { name: string; pct: number } | null = null;
-			for (const c of named) {
-				const t = courseTotals(c);
-				const s = statsFor(t.attended, t.missed, t.remaining, target);
-				if (s.current !== null && (!worst || s.current < worst.pct))
-					worst = { name: c.name, pct: s.current };
-			}
-			return { current: overall.current, target, canSkip: overall.canSkip, worst };
+			return {
+				target,
+				courses,
+				below: courses.filter((c) => c.pct !== null && c.pct < target).length,
+			};
 		} catch {
 			return null;
 		}
@@ -437,26 +432,31 @@
 							{/if}
 						</a>
 					{:else if id === "attendance"}
-						<a class="panel widget" href="/attendance-calculator">
+						<a class="panel widget wide" href="/attendance-calculator">
 							<span class="label">Attendance</span>
-							{#if att && att.current !== null}
-								<span
-									class="stat"
-									style:color={att.current >= att.target
-										? "var(--ok)"
-										: "var(--bad)"}
-									>{att.current.toFixed(0)}<span class="unit">%</span></span
-								>
+							{#if att}
+								<ul class="att">
+									{#each att.courses as c}
+										<li>
+											<span class="att-name">{c.name}</span>
+											{#if c.pct === null}
+												<span class="att-pct dim">—</span>
+											{:else}
+												<span
+													class="att-pct"
+													style:color={c.pct >= att.target
+														? "var(--ok)"
+														: "var(--bad)"}>{c.pct.toFixed(0)}%</span
+												>
+											{/if}
+										</li>
+									{/each}
+								</ul>
 								<span class="sub">
-									{att.canSkip > 0
-										? `${att.canSkip} more you can skip`
-										: `below your ${att.target}% target`}
+									{att.below
+										? `${att.below} below ${att.target}%`
+										: `all above ${att.target}%`}
 								</span>
-								{#if att.worst}
-									<span class="sub dim">
-										lowest: {att.worst.name} · {att.worst.pct.toFixed(0)}%
-									</span>
-								{/if}
 							{:else}
 								<span class="stat dim">—</span>
 								<span class="sub">Log your classes</span>
@@ -827,12 +827,51 @@
 		color: var(--text-secondary);
 	}
 
-	.sub.dim {
-		color: var(--text-muted);
-		font-size: 0.72rem;
+	/* A list of courses needs more width than a single figure does. */
+	.widget.wide {
+		grid-column: span 2;
+	}
+
+	@media (max-width: 420px) {
+		.widget.wide {
+			grid-column: span 1;
+		}
+	}
+
+	.att {
+		list-style: none;
+		margin: 0.6rem 0 0.7rem;
+	}
+
+	.att li {
+		display: flex;
+		align-items: baseline;
+		gap: 0.5rem;
+		padding: 0.28rem 0;
+		border-bottom: 1px solid var(--border);
+	}
+
+	.att li:last-child {
+		border-bottom: none;
+	}
+
+	.att-name {
+		flex: 1;
+		min-width: 0;
+		font-size: 0.82rem;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+
+	.att-pct {
+		font-family: var(--font-mono);
+		font-size: 0.85rem;
+		font-weight: 500;
+	}
+
+	.att-pct.dim {
+		color: var(--text-muted);
 	}
 
 	.bar {
