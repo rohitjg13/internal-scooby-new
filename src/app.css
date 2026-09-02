@@ -26,9 +26,12 @@
 	--ring: rgba(217, 154, 78, 0.65);
 	--shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
 
-	--font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-	--font-display: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
-	--font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+	/* One grotesque throughout, set tight and heavy for headings — a printed
+	   university notice, not a typographic performance. Plex Mono carries
+	   every number, code and time. */
+	--font: 'Libre Franklin', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--font-display: 'Libre Franklin', -apple-system, 'Segoe UI', sans-serif;
+	--font-mono: 'IBM Plex Mono', 'SF Mono', ui-monospace, monospace;
 
 	--radius: 4px;
 	--radius-sm: 3px;
@@ -79,9 +82,9 @@ body {
 h1,
 h2 {
 	font-family: var(--font-display);
-	font-weight: 400;
-	letter-spacing: -0.01em;
-	line-height: 1.1;
+	font-weight: 700;
+	letter-spacing: -0.03em;
+	line-height: 1.05;
 }
 
 h3 {
