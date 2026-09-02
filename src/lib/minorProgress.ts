@@ -151,16 +151,20 @@ export function allCourses(m: Minor) {
 export const courseKey = (c: { code: string; name: string }) =>
 	(c.code || c.name).trim();
 
-/** What the tracker saved: which minor is yours, and each course's status. */
-export type Tracker = { mine: string; marks: Record<string, Status> };
+/** What the tracker saved: which minors are yours, and each course's status. */
+export type Tracker = { mine: string[]; marks: Record<string, Status> };
+
+/** A single minor was saved as a bare slug before you could track several. */
+export const asList = (mine: unknown): string[] =>
+	Array.isArray(mine) ? mine.filter((s) => typeof s === 'string') : mine ? [String(mine)] : [];
 
 export function loadTracker(): Tracker {
-	if (typeof localStorage === 'undefined') return { mine: '', marks: {} };
+	if (typeof localStorage === 'undefined') return { mine: [], marks: {} };
 	try {
 		const saved = JSON.parse(localStorage.getItem(STORE) ?? '{}');
-		return { mine: saved.mine ?? '', marks: saved.marks ?? {} };
+		return { mine: asList(saved.mine), marks: saved.marks ?? {} };
 	} catch {
-		return { mine: '', marks: {} };
+		return { mine: [], marks: {} };
 	}
 }
 
@@ -172,6 +176,19 @@ export function findMinor(curricula: Curriculum[], mine: string) {
 	const curriculum = curricula.find((c) => c.id === mine.slice(0, cut));
 	const minor = curriculum?.minors.find((m) => m.id === mine.slice(cut + 1));
 	return curriculum && minor ? { curriculum, minor } : undefined;
+}
+
+/**
+ * Every tracked minor that is still in the data, in the order they were
+ * tracked. Slugs for minors the documents no longer carry simply drop out.
+ */
+export function findMinors(curricula: Curriculum[], mine: string[]) {
+	return mine
+		.map((s) => {
+			const found = findMinor(curricula, s);
+			return found && { slug: s, ...found };
+		})
+		.filter((x) => x !== undefined);
 }
 
 export function progress(

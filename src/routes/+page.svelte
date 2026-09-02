@@ -17,7 +17,7 @@
 	import { remainingDays, totalDays, TEACHING_DAYS, WEEKDAYS } from "$lib/semester";
 	import {
 		loadTracker,
-		findMinor,
+		findMinors,
 		progress,
 		type Curriculum,
 	} from "$lib/minorProgress";
@@ -109,15 +109,18 @@
 
 	/* ---- widgets ---- */
 	const WIDGET_KEY = "scooby.dashboard.widgets";
-	const ALL_WIDGETS = [
+	// Each minor you track is its own widget, so the catalogue is only known
+	// once the tracker has been read: "gpa" | "attendance" | "semester" |
+	// `minor:<curriculum>/<minor>`.
+	type WidgetId = string;
+
+	const BASE_WIDGETS = [
 		{ id: "gpa", name: "GPA" },
 		{ id: "attendance", name: "Attendance" },
 		{ id: "semester", name: "Semester" },
-		{ id: "minor", name: "Minor" },
-	] as const;
-	type WidgetId = (typeof ALL_WIDGETS)[number]["id"];
+	];
 
-	let widgets = $state<WidgetId[]>(["gpa", "attendance", "minor"]);
+	let widgets = $state<WidgetId[]>(["gpa", "attendance"]);
 	let widgetsLoaded = $state(false);
 	let picking = $state(false);
 
@@ -129,7 +132,7 @@
 
 	$effect(() => {
 		if (widgetsLoaded)
-			localStorage.setItem(WIDGET_KEY, JSON.stringify({ v: 2, widgets }));
+			localStorage.setItem(WIDGET_KEY, JSON.stringify({ v: 3, widgets }));
 	});
 
 	/* ---- widget data (all read from what the other pages already saved) ---- */
@@ -140,14 +143,24 @@
 		canSkip: number;
 		worst: { name: string; pct: number } | null;
 	} | null>(null);
-	let minor = $state<{
+	type MinorWidget = {
+		slug: string;
 		name: string;
 		href: string;
 		done: number;
 		doing: number;
 		goal: number;
 		left: number;
-	} | null>(null);
+	};
+	let minors = $state<MinorWidget[]>([]);
+	const minorById = (id: string) =>
+		minors.find((m) => `minor:${m.slug}` === id);
+
+	// What Edit offers: the fixed widgets, plus one per minor you track.
+	const catalogue = $derived([
+		...BASE_WIDGETS,
+		...minors.map((m) => ({ id: `minor:${m.slug}`, name: m.name })),
+	]);
 
 	const semLeft = $derived.by(() => {
 		const left = remainingDays(now);
@@ -168,16 +181,15 @@
 			: null;
 	}
 
-	function readMinor() {
+	function readMinors(): MinorWidget[] {
 		const { mine, marks } = loadTracker();
-		const found = findMinor([newCurriculum, oldCurriculum] as Curriculum[], mine);
-		if (!found) return null;
-		const { curriculum, minor: m } = found;
-		return {
+		const curricula = [newCurriculum, oldCurriculum] as Curriculum[];
+		return findMinors(curricula, mine).map(({ slug, curriculum, minor: m }) => ({
+			slug,
 			name: m.name,
 			href: `/minors?c=${curriculum.id}&m=${m.id}`,
 			...progress(marks, curriculum.id, m),
-		};
+		}));
 	}
 
 	function readAttendance() {
@@ -220,17 +232,26 @@
 
 		gpa = readGpa();
 		att = readAttendance();
-		minor = readMinor();
+		minors = readMinors();
 
 		try {
 			const saved = JSON.parse(localStorage.getItem(WIDGET_KEY) ?? "null");
-			// A bare array is a layout saved before the minor widget existed.
-			// Leaving it alone would hide the widget from exactly the people
-			// already tracking a minor, so they get it added once; anyone who
-			// then removes it is saved in the new shape and stays removed.
-			if (Array.isArray(saved))
-				widgets = minor && !saved.includes("minor") ? [...saved, "minor"] : saved;
-			else if (Array.isArray(saved?.widgets)) widgets = saved.widgets;
+			// A bare array predates the minor widget; a single "minor" entry
+			// predates tracking more than one. Either way, expand to one widget
+			// per minor you actually track, so nobody has to go re-add them.
+			const from: WidgetId[] = Array.isArray(saved)
+				? saved
+				: Array.isArray(saved?.widgets)
+					? saved.widgets
+					: [...widgets, "minor"];
+			widgets = from.flatMap((id) =>
+				id === "minor" ? minors.map((m) => `minor:${m.slug}`) : [id],
+			);
+			// A first visit with minors already tracked still gets them.
+			if (!Array.isArray(saved?.widgets))
+				for (const m of minors)
+					if (!widgets.includes(`minor:${m.slug}`))
+						widgets = [...widgets, `minor:${m.slug}`];
 		} catch {
 			// keep the defaults
 		}
@@ -388,7 +409,7 @@
 
 		{#if picking}
 			<div class="chips">
-				{#each ALL_WIDGETS as w}
+				{#each catalogue as w}
 					<button
 						class="chip"
 						class:on={widgets.includes(w.id)}
@@ -403,89 +424,83 @@
 
 		{#if widgets.length}
 			<div class="widgets">
-				{#if widgets.includes("gpa")}
-					<a class="panel widget" href="/gpa">
-						<span class="label">CGPA</span>
-						{#if gpa}
-							<span class="stat">{gpa.cgpa.toFixed(2)}</span>
-							<span class="sub">{gpa.credits} credits graded</span>
-						{:else}
-							<span class="stat dim">—</span>
-							<span class="sub">Add your grades</span>
-						{/if}
-					</a>
-				{/if}
-
-				{#if widgets.includes("attendance")}
-					<a class="panel widget" href="/attendance-calculator">
-						<span class="label">Attendance</span>
-						{#if att && att.current !== null}
-							<span
-								class="stat"
-								style:color={att.current >= att.target ? "var(--ok)" : "var(--bad)"}
-								>{att.current.toFixed(0)}<span class="unit">%</span></span
-							>
-							<span class="sub">
-								{att.canSkip > 0
-									? `${att.canSkip} more you can skip`
-									: `below your ${att.target}% target`}
-							</span>
-							{#if att.worst}
-								<span class="sub dim">
-									lowest: {att.worst.name} · {att.worst.pct.toFixed(0)}%
-								</span>
+				{#each widgets as id (id)}
+					{#if id === "gpa"}
+						<a class="panel widget" href="/gpa">
+							<span class="label">CGPA</span>
+							{#if gpa}
+								<span class="stat">{gpa.cgpa.toFixed(2)}</span>
+								<span class="sub">{gpa.credits} credits graded</span>
+							{:else}
+								<span class="stat dim">—</span>
+								<span class="sub">Add your grades</span>
 							{/if}
-						{:else}
-							<span class="stat dim">—</span>
-							<span class="sub">Log your classes</span>
-						{/if}
-					</a>
-				{/if}
-
-				{#if widgets.includes("minor")}
-					<a class="panel widget" href={minor?.href ?? "/minors"}>
-						<span class="label">Minor</span>
-						{#if minor && minor.goal}
-							<span class="stat"
-								>{minor.done}<span class="unit">/ {minor.goal} cr</span></span
+						</a>
+					{:else if id === "attendance"}
+						<a class="panel widget" href="/attendance-calculator">
+							<span class="label">Attendance</span>
+							{#if att && att.current !== null}
+								<span
+									class="stat"
+									style:color={att.current >= att.target
+										? "var(--ok)"
+										: "var(--bad)"}
+									>{att.current.toFixed(0)}<span class="unit">%</span></span
+								>
+								<span class="sub">
+									{att.canSkip > 0
+										? `${att.canSkip} more you can skip`
+										: `below your ${att.target}% target`}
+								</span>
+								{#if att.worst}
+									<span class="sub dim">
+										lowest: {att.worst.name} · {att.worst.pct.toFixed(0)}%
+									</span>
+								{/if}
+							{:else}
+								<span class="stat dim">—</span>
+								<span class="sub">Log your classes</span>
+							{/if}
+						</a>
+					{:else if id === "semester"}
+						<a class="panel widget" href="/academic-calendar">
+							<span class="label">Semester</span>
+							<span class="stat">{semLeft.rem}<span class="unit">days</span></span>
+							<span class="sub">of teaching left</span>
+							<span class="bar"
+								><span style:width="{semLeft.pct}%"></span></span
 							>
-							<span class="sub">
-								{minor.left} to go{minor.doing
-									? `, ${minor.doing} in progress`
-									: ""}
-							</span>
-							<span class="sub dim">{minor.name}</span>
-							<span class="bar">
-								<span
-									class="bar-done"
-									style:width="{(minor.done / minor.goal) * 100}%"
-								></span>
-								<span
-									class="bar-doing"
-									style:width="{(minor.doing / minor.goal) * 100}%"
-								></span>
-							</span>
-						{:else if minor}
-							<!-- A minor whose document lists no parseable courses: name it,
-							     but don't invent a number for it. -->
-							<span class="stat dim">—</span>
-							<span class="sub">{minor.name}</span>
-							<span class="sub dim">nothing to tick off yet</span>
-						{:else}
-							<span class="stat dim">—</span>
-							<span class="sub">Pick a minor to track</span>
-						{/if}
-					</a>
-				{/if}
-
-				{#if widgets.includes("semester")}
-					<a class="panel widget" href="/academic-calendar">
-						<span class="label">Semester</span>
-						<span class="stat">{semLeft.rem}<span class="unit">days</span></span>
-						<span class="sub">of teaching left</span>
-						<span class="bar"><span style:width="{semLeft.pct}%"></span></span>
-					</a>
-				{/if}
+						</a>
+					{:else if minorById(id)}
+						{@const m = minorById(id)!}
+						<a class="panel widget" href={m.href}>
+							<span class="label">{m.name}</span>
+							{#if m.goal}
+								<span class="stat"
+									>{m.done}<span class="unit">/ {m.goal} cr</span></span
+								>
+								<span class="sub">
+									{m.left} to go{m.doing ? `, ${m.doing} in progress` : ""}
+								</span>
+								<span class="bar">
+									<span
+										class="bar-done"
+										style:width="{(m.done / m.goal) * 100}%"
+									></span>
+									<span
+										class="bar-doing"
+										style:width="{(m.doing / m.goal) * 100}%"
+									></span>
+								</span>
+							{:else}
+								<!-- A minor whose document lists no parseable courses: name
+								     it, but don't invent a number for it. -->
+								<span class="stat dim">—</span>
+								<span class="sub">nothing to tick off yet</span>
+							{/if}
+						</a>
+					{/if}
+				{/each}
 			</div>
 		{:else}
 			<p class="quiet">No widgets. Hit Edit to add one.</p>
@@ -563,8 +578,8 @@
 	}
 
 	.head h1 {
-		font-size: clamp(2.6rem, 11vw, 3.4rem);
-		margin-top: 0.35rem;
+		font-size: clamp(2.4rem, 10vw, 3.1rem);
+		margin-top: 0.4rem;
 	}
 
 	.panel-head {
@@ -652,7 +667,9 @@
 
 	.next-name {
 		font-family: var(--font-display);
-		font-size: 1.35rem;
+		font-size: 1.3rem;
+		font-weight: 700;
+		letter-spacing: -0.025em;
 		line-height: 1.15;
 	}
 
@@ -783,9 +800,13 @@
 		background: var(--bg-hover);
 	}
 
+	/* The number is the widget, so it is set in mono at display size —
+	   figures line up across tiles and read as data, not decoration. */
 	.stat {
-		font-family: var(--font-display);
-		font-size: 2.4rem;
+		font-family: var(--font-mono);
+		font-size: 2.1rem;
+		font-weight: 500;
+		letter-spacing: -0.04em;
 		line-height: 1.1;
 		margin-top: 0.5rem;
 	}

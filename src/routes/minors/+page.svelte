@@ -9,6 +9,8 @@
 		markKey,
 		slug,
 		progress as progressOf,
+		loadTracker,
+		findMinors,
 		STORE,
 		type Section,
 		type Minor,
@@ -152,18 +154,15 @@
 	// server, one flat map of course -> status.
 
 
-	let mine = $state("");
+	// You can be doing more than one minor, so this is a list.
+	let mine = $state<string[]>([]);
 	let marks = $state<Record<string, Status>>({});
 	let loaded = $state(false);
 
 	onMount(() => {
-		try {
-			const saved = JSON.parse(localStorage.getItem(STORE) ?? "{}");
-			mine = saved.mine ?? "";
-			marks = saved.marks ?? {};
-		} catch {
-			// Corrupt or blocked storage just means starting fresh.
-		}
+		const saved = loadTracker();
+		mine = saved.mine;
+		marks = saved.marks;
 		loaded = true;
 	});
 
@@ -193,11 +192,17 @@
 		else delete marks[k];
 	}
 
-	const tracked = $derived(
-		mine.startsWith(`${current.id}/`)
-			? current.minors.find((m) => m.id === mine.slice(current.id.length + 1))
-			: undefined,
-	);
+	const isMine = (curriculumId: string, minorId: string) =>
+		mine.includes(slug(curriculumId, minorId));
+
+	function toggleMine(curriculumId: string, minorId: string) {
+		const s = slug(curriculumId, minorId);
+		mine = mine.includes(s) ? mine.filter((x) => x !== s) : [...mine, s];
+	}
+
+	// Every minor you track, from either curriculum — the shelf leads with all
+	// of them, not just the one whose curriculum you happen to be browsing.
+	const tracked = $derived(findMinors(curricula, mine));
 </script>
 
 <Seo
@@ -290,15 +295,10 @@
 				<p class="reqs-title">Your progress</p>
 				<button
 					class="btn btn-sm"
-					class:active={mine === slug(current.id, m.id)}
-					onclick={() =>
-						(mine = mine === slug(current.id, m.id)
-							? ""
-							: slug(current.id, m.id))}
+					class:active={isMine(current.id, m.id)}
+					onclick={() => toggleMine(current.id, m.id)}
 				>
-					{mine === slug(current.id, m.id)
-						? "✓ My minor"
-						: "This is my minor"}
+					{isMine(current.id, m.id) ? "✓ Tracking" : "Track this minor"}
 				</button>
 			</div>
 
@@ -502,25 +502,37 @@
 			</button>
 		</div>
 
-		{#if loaded && tracked}
-			{@const p = progress(current.id, tracked)}
-			<a
-				class="mine"
-				href={href(current.id, tracked.id)}
-				style="--h: {hue(tracked.school)}"
-			>
-				<span class="eyebrow accent">Your minor</span>
-				<span class="mine-name">{tracked.name}</span>
-				<span class="bar">
-					<span class="seg fill" style="width: {(100 * p.done) / (p.goal || 1)}%"></span>
-					<span class="seg part" style="width: {(100 * p.doing) / (p.goal || 1)}%"></span>
-				</span>
-				<span class="mine-line">
-					{p.done} of {p.goal} credits done{p.doing
-						? `, ${p.doing} in progress`
-						: ""} — {p.left} to go
-				</span>
-			</a>
+		{#if loaded && tracked.length}
+			<div class="mine-list">
+				{#each tracked as { curriculum, minor } (curriculum.id + minor.id)}
+					{@const p = progress(curriculum.id, minor)}
+					<a
+						class="mine"
+						href={href(curriculum.id, minor.id)}
+						style="--h: {hue(minor.school)}"
+					>
+						<span class="eyebrow accent">
+							{tracked.length > 1 ? curriculum.label : "Your minor"}
+						</span>
+						<span class="mine-name">{minor.name}</span>
+						<span class="bar">
+							<span
+								class="seg fill"
+								style="width: {(100 * p.done) / (p.goal || 1)}%"
+							></span>
+							<span
+								class="seg part"
+								style="width: {(100 * p.doing) / (p.goal || 1)}%"
+							></span>
+						</span>
+						<span class="mine-line">
+							{p.done} of {p.goal} credits done{p.doing
+								? `, ${p.doing} in progress`
+								: ""} — {p.left} to go
+						</span>
+					</a>
+				{/each}
+			</div>
 		{/if}
 
 		{#if matches.length === 0}
@@ -1383,6 +1395,12 @@
 	.course.is-done h3,
 	.course.is-done .tag {
 		opacity: 0.55;
+	}
+
+	.mine-list {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+		gap: 0.75rem;
 	}
 
 	.mine {

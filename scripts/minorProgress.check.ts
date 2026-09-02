@@ -8,6 +8,8 @@ import {
 	markKey,
 	slug,
 	findMinor,
+	findMinors,
+	asList,
 	totalCredits,
 	type Curriculum,
 	type Status
@@ -62,6 +64,22 @@ const found = findMinor(curricula, slug(cur.id, m.id));
 assert.strictEqual(found?.minor.id, m.id);
 assert.strictEqual(findMinor(curricula, "nope/gone"), undefined);
 assert.strictEqual(findMinor(curricula, ""), undefined);
+
+// You can track several minors; a slug for a minor the documents no longer
+// carry drops out rather than breaking the rest.
+const two = [slug(cur.id, m.id), slug(cur.id, other.id)];
+assert.deepStrictEqual(
+	findMinors(curricula, [...two, "old/gone", ""]).map((x) => x.minor.id),
+	[m.id, other.id]
+);
+assert.deepStrictEqual(findMinors(curricula, []), []);
+
+// The single minor saved before multi-tracking existed must survive the move
+// to a list — losing it would silently untrack someone's minor.
+assert.deepStrictEqual(asList("new/design"), ["new/design"]);
+assert.deepStrictEqual(asList(["a", "b"]), ["a", "b"]);
+assert.deepStrictEqual(asList(""), []);
+assert.deepStrictEqual(asList(undefined), []);
 
 console.log(
 	`minorProgress: ok — ${curricula.reduce((n, c) => n + c.minors.length, 0)} minors,` +
