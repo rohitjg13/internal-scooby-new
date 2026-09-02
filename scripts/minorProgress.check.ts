@@ -36,6 +36,18 @@ for (const c of curricula)
 	}
 assert.deepStrictEqual(empty, UNTRACKABLE, "which minors have nothing to track");
 
+// The goal is what the documents ask for, never the sum of what they list.
+// Management offers 48 credits of courses and asks for 16; Civil states its
+// figure in a sentence above each table rather than in a credit matrix.
+const goalOf = (id: string) => {
+	const found = findMinor(curricula, id)!;
+	return progress({}, found.curriculum.id, found.minor).goal;
+};
+assert.strictEqual(goalOf("new/management"), 16);
+assert.strictEqual(goalOf("new/civil-engineering"), 18); // 18/18/19 per pathway
+assert.strictEqual(goalOf("new/chemical-engineering"), 18); // from the matrix
+assert.strictEqual(goalOf("old/physics"), 22); // "22 … for an Engineering major"
+
 // Marking courses moves credits from left -> doing -> done, and never
 // double-counts a course listed in two baskets.
 const cur = curricula[0];

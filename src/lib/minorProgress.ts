@@ -118,8 +118,40 @@ export const totalCredits = (m: Minor) => {
 		s.columns.at(-1)?.toLowerCase().startsWith("total credits"),
 	);
 	const total = matrix?.rows[0]?.at(-1);
-	return total && /^\d/.test(total) ? `${total} credits` : "";
+	if (total && /^\d/.test(total)) return `${total} credits`;
+
+	// Civil and Management have no credit matrix — their requirement is a
+	// sentence above the table ("Minimum credits required: 18"). Without this
+	// the page showed them no figure at all, and the tracker fell back to
+	// totalling every course on offer: Management asks for 16 credits, and
+	// the goal read 48.
+	const minimums = statedMinimums(m);
+	return minimums.length ? `${Math.min(...minimums)} credits` : "";
 };
+
+// Written two ways: as a label with the number after it, and as an aside
+// inside a longer sentence ("Program requirements (minimum 16 credits):").
+const MIN_CREDITS = [
+	/min(?:imum)?[^.\d]{0,30}?(\d+)\s*credits/i,
+	/min(?:imum)?\s*credits\s*(?:required)?\s*[:\-\u2013]\s*(\d+)/i
+];
+
+// Civil states one per pathway (18, 18, 19). The smallest is the bar every
+// reader has to clear, and the per-pathway sentences sit on the page beside
+// it.
+function statedMinimums(m: Minor) {
+	const prose = [...(m.notes ?? []), ...m.sections.map((s) => s.note ?? "")];
+	const out: number[] = [];
+	for (const line of prose)
+		for (const re of MIN_CREDITS) {
+			const hit = line.match(re);
+			if (hit) {
+				out.push(Number(hit[1]));
+				break;
+			}
+		}
+	return out;
+}
 
 // --- your progress ------------------------------------------------------
 
@@ -205,8 +237,10 @@ export function progress(
 		if (s === "done") done += c.credits;
 		else if (s === "doing") doing += c.credits;
 	}
-	// The requirement is the goal; the sum of everything on offer is only
-	// a fallback for minors that never state a total.
-	const goal = Number(totalCredits(m).match(/\d+/)?.[0]) || listed;
+	// Only ever what the documents ask for. Totalling every course on offer
+	// looks like a goal and is not one — Management lists 48 credits of
+	// courses to pick 16 from — so a minor that states no figure gets goal 0
+	// and the UI leaves the bar off rather than inventing a denominator.
+	const goal = Number(totalCredits(m).match(/\d+/)?.[0]) || 0;
 	return { done, doing, goal, left: Math.max(0, goal - done - doing) };
 }
