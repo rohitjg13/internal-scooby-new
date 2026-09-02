@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { onMount } from "svelte";
 	import { page } from "$app/state";
+	import { creditsOf } from "$lib/minorCredits";
 	import Seo from "$lib/components/Seo.svelte";
 	import newCurriculum from "$lib/data/minors.new.json";
 	import oldCurriculum from "$lib/data/minors.old.json";
@@ -238,6 +240,92 @@
 		const chips = mono ? codes.slice(0, 3) : titles.slice(0, 2);
 		return { chips, mono, more: seen.size - chips.length };
 	}
+
+	// --- tracker -----------------------------------------------------------
+
+	// Your own progress through a minor. Browser-local: no accounts, no
+	// server, one flat map of course -> status.
+	const STORE = "minors:tracker:v1";
+	type Status = "doing" | "done";
+
+	let mine = $state("");
+	let marks = $state<Record<string, Status>>({});
+	let loaded = $state(false);
+
+	onMount(() => {
+		try {
+			const saved = JSON.parse(localStorage.getItem(STORE) ?? "{}");
+			mine = saved.mine ?? "";
+			marks = saved.marks ?? {};
+		} catch {
+			// Corrupt or blocked storage just means starting fresh.
+		}
+		loaded = true;
+	});
+
+	$effect(() => {
+		const payload = JSON.stringify({ mine, marks });
+		if (loaded) localStorage.setItem(STORE, payload);
+	});
+
+	const slug = (curriculumId: string, minorId: string) =>
+		`${curriculumId}/${minorId}`;
+	const markKey = (curriculumId: string, minorId: string, course: string) =>
+		`${slug(curriculumId, minorId)}#${course}`;
+
+	// The same de-duplication the tile preview does: a course listed in two
+	// baskets is still one course you take once.
+	function allCourses(m: Minor) {
+		const seen = new Set<string>();
+		const out: { key: string; credits: number }[] = [];
+		for (const s of m.sections) {
+			for (const c of readCourses(s) ?? []) {
+				if (c.heading) continue;
+				const key = (c.code || c.name).trim();
+				if (!key || seen.has(key)) continue;
+				seen.add(key);
+				out.push({ key, credits: creditsOf(c.credits) });
+			}
+		}
+		return out;
+	}
+
+	const courseKey = (c: { code: string; name: string }) =>
+		(c.code || c.name).trim();
+
+	function progress(curriculumId: string, m: Minor) {
+		let done = 0;
+		let doing = 0;
+		let listed = 0;
+		for (const c of allCourses(m)) {
+			listed += c.credits;
+			const s = marks[markKey(curriculumId, m.id, c.key)];
+			if (s === "done") done += c.credits;
+			else if (s === "doing") doing += c.credits;
+		}
+		// The requirement is the goal; the sum of everything on offer is only
+		// a fallback for minors that never state a total.
+		const goal = Number(totalCredits(m).match(/\d+/)?.[0]) || listed;
+		return { done, doing, goal, left: Math.max(0, goal - done - doing) };
+	}
+
+	const NEXT: Record<string, Status | ""> = {
+		"": "doing",
+		doing: "done",
+		done: "",
+	};
+	function cycle(curriculumId: string, minorId: string, course: string) {
+		const k = markKey(curriculumId, minorId, course);
+		const next = NEXT[marks[k] ?? ""];
+		if (next) marks[k] = next;
+		else delete marks[k];
+	}
+
+	const tracked = $derived(
+		mine.startsWith(`${current.id}/`)
+			? current.minors.find((m) => m.id === mine.slice(current.id.length + 1))
+			: undefined,
+	);
 </script>
 
 <Seo
@@ -250,6 +338,7 @@
 	{@const m = selected}
 	{@const matrix = m.sections.find(isMatrix)}
 	{@const alsoFacts = shortFacts(m).filter(([k]) => !/^total credits/i.test(k))}
+	{@const p = progress(current.id, m)}
 	<main class="detail" style="--h: {hue(m.school)}">
 		<a class="back" href={href(current.id)}>← All minors</a>
 
@@ -324,6 +413,58 @@
 		{/if}
 
 
+		<section class="tracker">
+			<div class="tracker-head">
+				<p class="reqs-title">Your progress</p>
+				<button
+					class="btn btn-sm"
+					class:active={mine === slug(current.id, m.id)}
+					onclick={() =>
+						(mine = mine === slug(current.id, m.id)
+							? ""
+							: slug(current.id, m.id))}
+				>
+					{mine === slug(current.id, m.id)
+						? "✓ My minor"
+						: "This is my minor"}
+				</button>
+			</div>
+
+			<div
+				class="bar"
+				role="progressbar"
+				aria-label="Credits completed"
+				aria-valuemin="0"
+				aria-valuemax={p.goal}
+				aria-valuenow={p.done}
+			>
+				<span class="seg fill" style="width: {(100 * p.done) / (p.goal || 1)}%"
+				></span>
+				<span class="seg part" style="width: {(100 * p.doing) / (p.goal || 1)}%"
+				></span>
+			</div>
+
+			<div class="stats">
+				<div class="stat">
+					<span class="stat-value">{p.done}</span>
+					<span class="stat-label">credits done</span>
+				</div>
+				<div class="stat">
+					<span class="stat-value">{p.doing}</span>
+					<span class="stat-label">in progress</span>
+				</div>
+				<div class="stat total">
+					<span class="stat-value">{p.left}</span>
+					<span class="stat-label">still to take, of {p.goal}</span>
+				</div>
+			</div>
+
+			<p class="reqs-note">
+				Tap the box on a course to cycle it through doing and done. Kept
+				in this browser only — clearing site data clears it.
+			</p>
+		</section>
+
 		{#each m.sections.filter((s) => !isMatrix(s)) as section}
 			{@const courses = readCourses(section)}
 			<section class="block">
@@ -338,7 +479,16 @@
 							{#if c.heading}
 								<p class="basket">{c.heading}</p>
 							{:else}
-								<article class="course">
+								{@const key = courseKey(c)}
+								{@const st = marks[markKey(current.id, m.id, key)]}
+								<article class="course" class:is-done={st === "done"}>
+									<button
+										class="mark {st ?? ''}"
+										aria-label="{c.name}: {st ?? 'not started'}"
+										onclick={() => cycle(current.id, m.id, key)}
+									>
+										{st === "done" ? "✓" : st === "doing" ? "◗" : ""}
+									</button>
 									{#if c.code}
 										<span class="tag">{c.code}</span>
 									{/if}
@@ -479,6 +629,27 @@
 				{allOpen ? "Collapse all" : "Expand all"}
 			</button>
 		</div>
+
+		{#if loaded && tracked}
+			{@const p = progress(current.id, tracked)}
+			<a
+				class="mine"
+				href={href(current.id, tracked.id)}
+				style="--h: {hue(tracked.school)}"
+			>
+				<span class="eyebrow accent">Your minor</span>
+				<span class="mine-name">{tracked.name}</span>
+				<span class="bar">
+					<span class="seg fill" style="width: {(100 * p.done) / (p.goal || 1)}%"></span>
+					<span class="seg part" style="width: {(100 * p.doing) / (p.goal || 1)}%"></span>
+				</span>
+				<span class="mine-line">
+					{p.done} of {p.goal} credits done{p.doing
+						? `, ${p.doing} in progress`
+						: ""} — {p.left} to go
+				</span>
+			</a>
+		{/if}
 
 		{#if matches.length === 0}
 			<p class="nothing">
@@ -1248,5 +1419,130 @@
 		.spec dt {
 			margin-top: 0.5rem;
 		}
+	}
+
+	/* --- tracker -------------------------------------------------------- */
+
+	.tracker {
+		display: grid;
+		gap: 1.1rem;
+		margin: 0 0 2.75rem;
+		padding: 1.5rem 1.6rem;
+		border: 1px solid var(--border);
+		border-radius: 16px;
+		background: var(--bg-card);
+	}
+
+	.tracker-head {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.tracker-head .btn.active {
+		border-color: hsl(var(--h) 55% 55% / 0.5);
+		color: hsl(var(--h) 65% 70%);
+	}
+
+	.tracker .reqs-note {
+		margin-top: -0.4rem;
+	}
+
+	.bar {
+		display: flex;
+		height: 7px;
+		border-radius: 999px;
+		overflow: hidden;
+		background: hsl(var(--h) 20% 50% / 0.14);
+	}
+
+	.seg {
+		transition: width 0.2s ease;
+	}
+
+	.seg.fill {
+		background: hsl(var(--h) 60% 60%);
+	}
+
+	.seg.part {
+		background: hsl(var(--h) 60% 60% / 0.4);
+	}
+
+	/* The tick box. Three states, one control: empty, doing, done. */
+	.mark {
+		flex-shrink: 0;
+		align-self: flex-start;
+		width: 20px;
+		height: 20px;
+		margin-top: 0.05rem;
+		display: grid;
+		place-items: center;
+		border: 1px solid var(--border-hover);
+		border-radius: 6px;
+		background: transparent;
+		color: var(--text-muted);
+		font-size: 0.7rem;
+		line-height: 1;
+		cursor: pointer;
+		transition:
+			border-color 0.15s,
+			background 0.15s,
+			color 0.15s;
+	}
+
+	.mark:hover {
+		border-color: hsl(var(--h) 55% 60%);
+	}
+
+	.mark.doing {
+		border-color: hsl(var(--h) 55% 60%);
+		color: hsl(var(--h) 65% 70%);
+	}
+
+	.mark.done {
+		border-color: transparent;
+		background: hsl(var(--h) 55% 55%);
+		color: var(--bg);
+	}
+
+	/* Done reads as settled, not as the thing you are looking for now. */
+	.course.is-done h3,
+	.course.is-done .tag {
+		opacity: 0.55;
+	}
+
+	.mine {
+		display: grid;
+		gap: 0.45rem;
+		margin-bottom: 2.5rem;
+		padding: 1.1rem 1.25rem;
+		border: 1px solid var(--border);
+		border-radius: 14px;
+		background: var(--bg-card);
+		text-decoration: none;
+		color: inherit;
+		transition: border-color 0.15s;
+	}
+
+	.mine:hover {
+		border-color: var(--border-hover);
+	}
+
+	.mine-name {
+		font-size: 1.05rem;
+		font-weight: 600;
+		letter-spacing: -0.015em;
+	}
+
+	.mine .bar {
+		margin-top: 0.15rem;
+	}
+
+	.mine-line {
+		font-family: var(--font-mono);
+		font-size: 0.72rem;
+		color: var(--text-muted);
 	}
 </style>
