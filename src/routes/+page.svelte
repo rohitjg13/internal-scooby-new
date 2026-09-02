@@ -15,6 +15,14 @@
 	import { computeCGPA, cgpaFromSgpa } from "$lib/gpa/calculator";
 	import { courseTotals, statsFor, type Course as AttCourse } from "$lib/attendance";
 	import { remainingDays, totalDays, TEACHING_DAYS, WEEKDAYS } from "$lib/semester";
+	import {
+		loadTracker,
+		findMinor,
+		progress,
+		type Curriculum,
+	} from "$lib/minorProgress";
+	import newCurriculum from "$lib/data/minors.new.json";
+	import oldCurriculum from "$lib/data/minors.old.json";
 
 	type IconName =
 		| "calendar"
@@ -105,10 +113,11 @@
 		{ id: "gpa", name: "GPA" },
 		{ id: "attendance", name: "Attendance" },
 		{ id: "semester", name: "Semester" },
+		{ id: "minor", name: "Minor" },
 	] as const;
 	type WidgetId = (typeof ALL_WIDGETS)[number]["id"];
 
-	let widgets = $state<WidgetId[]>(["gpa", "attendance"]);
+	let widgets = $state<WidgetId[]>(["gpa", "attendance", "minor"]);
 	let widgetsLoaded = $state(false);
 	let picking = $state(false);
 
@@ -119,7 +128,8 @@
 	}
 
 	$effect(() => {
-		if (widgetsLoaded) localStorage.setItem(WIDGET_KEY, JSON.stringify(widgets));
+		if (widgetsLoaded)
+			localStorage.setItem(WIDGET_KEY, JSON.stringify({ v: 2, widgets }));
 	});
 
 	/* ---- widget data (all read from what the other pages already saved) ---- */
@@ -129,6 +139,14 @@
 		target: number;
 		canSkip: number;
 		worst: { name: string; pct: number } | null;
+	} | null>(null);
+	let minor = $state<{
+		name: string;
+		href: string;
+		done: number;
+		doing: number;
+		goal: number;
+		left: number;
 	} | null>(null);
 
 	const semLeft = $derived.by(() => {
@@ -148,6 +166,18 @@
 		return r.totalCreditsRegistered
 			? { cgpa: r.cgpa, credits: r.totalCreditsRegistered }
 			: null;
+	}
+
+	function readMinor() {
+		const { mine, marks } = loadTracker();
+		const found = findMinor([newCurriculum, oldCurriculum] as Curriculum[], mine);
+		if (!found) return null;
+		const { curriculum, minor: m } = found;
+		return {
+			name: m.name,
+			href: `/minors?c=${curriculum.id}&m=${m.id}`,
+			...progress(marks, curriculum.id, m),
+		};
 	}
 
 	function readAttendance() {
@@ -188,16 +218,23 @@
 	onMount(() => {
 		const tick = setInterval(() => (now = new Date()), 30_000);
 
+		gpa = readGpa();
+		att = readAttendance();
+		minor = readMinor();
+
 		try {
-			const saved = localStorage.getItem(WIDGET_KEY);
-			if (saved) widgets = JSON.parse(saved);
+			const saved = JSON.parse(localStorage.getItem(WIDGET_KEY) ?? "null");
+			// A bare array is a layout saved before the minor widget existed.
+			// Leaving it alone would hide the widget from exactly the people
+			// already tracking a minor, so they get it added once; anyone who
+			// then removes it is saved in the new shape and stays removed.
+			if (Array.isArray(saved))
+				widgets = minor && !saved.includes("minor") ? [...saved, "minor"] : saved;
+			else if (Array.isArray(saved?.widgets)) widgets = saved.widgets;
 		} catch {
 			// keep the defaults
 		}
 		widgetsLoaded = true;
-
-		gpa = readGpa();
-		att = readAttendance();
 
 		const plan = loadPlan();
 		hasPlan = plan.batches.length > 0 || plan.selected.length > 0;
@@ -401,6 +438,42 @@
 						{:else}
 							<span class="stat dim">—</span>
 							<span class="sub">Log your classes</span>
+						{/if}
+					</a>
+				{/if}
+
+				{#if widgets.includes("minor")}
+					<a class="panel widget" href={minor?.href ?? "/minors"}>
+						<span class="label">Minor</span>
+						{#if minor && minor.goal}
+							<span class="stat"
+								>{minor.done}<span class="unit">/ {minor.goal} cr</span></span
+							>
+							<span class="sub">
+								{minor.left} to go{minor.doing
+									? `, ${minor.doing} in progress`
+									: ""}
+							</span>
+							<span class="sub dim">{minor.name}</span>
+							<span class="bar">
+								<span
+									class="bar-done"
+									style:width="{(minor.done / minor.goal) * 100}%"
+								></span>
+								<span
+									class="bar-doing"
+									style:width="{(minor.doing / minor.goal) * 100}%"
+								></span>
+							</span>
+						{:else if minor}
+							<!-- A minor whose document lists no parseable courses: name it,
+							     but don't invent a number for it. -->
+							<span class="stat dim">—</span>
+							<span class="sub">{minor.name}</span>
+							<span class="sub dim">nothing to tick off yet</span>
+						{:else}
+							<span class="stat dim">—</span>
+							<span class="sub">Pick a minor to track</span>
 						{/if}
 					</a>
 				{/if}
@@ -742,7 +815,7 @@
 	}
 
 	.bar {
-		display: block;
+		display: flex;
 		height: 2px;
 		margin-top: 0.7rem;
 		background: var(--border);
@@ -752,6 +825,11 @@
 		display: block;
 		height: 100%;
 		background: var(--accent);
+	}
+
+	/* done is solid, in-progress is the same hue held back */
+	.bar-doing {
+		background: color-mix(in srgb, var(--accent) 38%, transparent);
 	}
 
 	/* --- index --- */
