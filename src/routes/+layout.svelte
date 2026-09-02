@@ -4,7 +4,7 @@
 </script>
 
 <svelte:head>
-	<meta name="theme-color" content="#08080a" />
+	<meta name="theme-color" content="#0b0a09" />
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link
 		rel="preconnect"
@@ -12,16 +12,18 @@
 		crossorigin="anonymous"
 	/>
 	<link
-		href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+		href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap"
 		rel="stylesheet"
 	/>
 </svelte:head>
 
 <div class="app-container">
 	{@render children()}
+
 	<footer class="footer">
+		<span class="rule"></span>
 		<p>
-			Built and Maintained by <a
+			Built and maintained by <a
 				href="https://github.com/rohitjg13"
 				target="_blank"
 				rel="noopener noreferrer">Rohit J G</a
@@ -40,22 +42,29 @@
 
 	.footer {
 		margin-top: auto;
-		padding: 2rem;
+		padding: 2.5rem 1.5rem 2rem;
 		text-align: center;
-		color: var(--text-secondary);
-		font-size: 0.875rem;
-		border-top: 1px solid var(--border);
+		color: var(--text-muted);
+		font-size: 0.8rem;
+	}
+
+	.rule {
+		display: block;
+		width: 28px;
+		height: 1px;
+		margin: 0 auto 1.25rem;
+		background: var(--border-hover);
 	}
 
 	.footer a {
-		color: var(--text);
+		color: var(--text-secondary);
 		text-decoration: none;
-		font-weight: 500;
-		transition: opacity 0.2s;
+		border-bottom: 1px solid var(--border-hover);
+		transition: color 0.15s;
 	}
 
 	.footer a:hover {
-		opacity: 0.8;
-		text-decoration: underline;
+		color: var(--accent);
+		border-color: var(--accent);
 	}
 </style>

@@ -1,11 +1,24 @@
 <script lang="ts">
+	import { onMount } from "svelte";
 	import Seo from "$lib/components/Seo.svelte";
+	import type { Course } from "$lib/types";
+	import { minutesToTime } from "$lib/types";
+	import {
+		loadPlan,
+		myCourses,
+		classesOn,
+		dayName,
+		nowMinutes,
+		type ClassSlot,
+	} from "$lib/mySchedule";
+	import { loadState as loadGpa } from "$lib/gpa/storage";
+	import { computeCGPA, cgpaFromSgpa } from "$lib/gpa/calculator";
+	import { courseTotals, statsFor, type Course as AttCourse } from "$lib/attendance";
+	import { remainingDays, totalDays, TEACHING_DAYS, WEEKDAYS } from "$lib/semester";
 
 	type IconName =
 		| "calendar"
-		| "exam"
 		| "clubs"
-		| "switch"
 		| "map"
 		| "minor"
 		| "history"
@@ -15,91 +28,201 @@
 
 	type Feature = {
 		title: string;
-		description: string;
+		blurb: string;
 		href: string;
 		icon: IconName;
 		tag: string;
-		external?: boolean;
 	};
 
 	const features: Feature[] = [
 		{
 			title: "Timetable Planner",
-			description:
-				"Pick your batch, throw in your UWE, CCC and elective choices, and see what clashes. Exports to an image or your calendar.",
+			blurb: "Batch, UWEs, CCCs and electives — with every clash flagged.",
 			href: "/collision-checker",
 			icon: "calendar",
 			tag: "Timetable",
 		},
 		{
 			title: "Academic Calendar",
-			description:
-				"Holidays, exam weeks and every add/drop deadline — with what's on today and what's coming up next.",
+			blurb: "Holidays, exam weeks and add/drop deadlines.",
 			href: "/academic-calendar",
 			icon: "semester",
 			tag: "Academics",
 		},
-		// {
-		// 	title: "Club Info",
-		// 	description:
-		// 		"Browse every cultural and technical club on campus — what they do, their logos, and where to follow them.",
-		// 	href: "/clubs",
-		// 	icon: "clubs",
-		// 	tag: "Campus",  
-		// },
-		// Campus Map lives on its own site, so it gets the banner above the grid
-		// rather than a card in it.
-		{
-			title: "Minors",
-			description:
-				"All the undergrad minors, with their core courses, elective baskets and credit requirements. Old curriculum too.",
-			href: "/minors",
-			icon: "minor",
-			tag: "Academics",
-		},
-		// No exam schedule is live — /exam shows the empty state.
-		// {
-		// 	title: "Exam Timetable",
-		// 	description:
-		// 		"Search your courses and build your personal mid-sem or end-sem exam schedule. Export it as an image or to your calendar.",
-		// 	href: "/exam",
-		// 	icon: "exam",
-		// 	tag: "Exams",
-		// },
 		{
 			title: "GPA Calculator",
-			description:
-				"SGPA and CGPA on whichever grading scale your admission year falls under. Add courses semester by semester.",
+			blurb: "SGPA and CGPA on your admission year's scale.",
 			href: "/gpa",
 			icon: "gpa",
 			tag: "Academics",
 		},
-		// Closed until room allocation happens again — /room-switch shows the empty state.
-		// {
-		// 	title: "Room Switch",
-		// 	description:
-		// 		"Want to swap hostel rooms? Post your room, browse others in your hostel, and connect over WhatsApp to sort out a mutual switch.",
-		// 	href: "/room-switch",
-		// 	icon: "switch",
-		// 	tag: "Hostel",
-		// },
 		{
 			title: "Attendance Calculator",
-			description:
-				"How far behind you are, and how many classes you can still afford to skip.",
+			blurb: "How far behind you are, and what you can still skip.",
 			href: "/attendance-calculator",
 			icon: "attendance",
 			tag: "Academics",
 		},
 		{
+			title: "Minors",
+			blurb: "Core courses, elective baskets, credit requirements.",
+			href: "/minors",
+			icon: "minor",
+			tag: "Academics",
+		},
+		{
 			title: "Timetable Changes",
-			description:
-				"Every timetable revision the university has pushed out, and what actually moved.",
+			blurb: "Every revision the university pushed, and what moved.",
 			href: "/changes",
 			icon: "history",
 			tag: "Timetable",
 		},
 	];
+
+	/* ---- clock ---- */
+	let now = $state(new Date());
+	const today = $derived(dayName(now));
+	const mins = $derived(nowMinutes(now));
+
+	/* ---- today's classes ---- */
+	let planLoaded = $state(false);
+	let hasPlan = $state(false);
+	let todays = $state<ClassSlot[]>([]);
+
+	const next = $derived(todays.find((c) => c.end > mins) ?? null);
+	const done = $derived(todays.filter((c) => c.end <= mins).length);
+
+	function untilLabel(c: ClassSlot) {
+		if (c.start <= mins) return "in progress";
+		const d = c.start - mins;
+		if (d < 60) return `in ${d} min`;
+		return `in ${Math.floor(d / 60)}h ${d % 60 ? `${d % 60}m` : ""}`.trim();
+	}
+
+	/* ---- widgets ---- */
+	const WIDGET_KEY = "scooby.dashboard.widgets";
+	const ALL_WIDGETS = [
+		{ id: "gpa", name: "GPA" },
+		{ id: "attendance", name: "Attendance" },
+		{ id: "semester", name: "Semester" },
+	] as const;
+	type WidgetId = (typeof ALL_WIDGETS)[number]["id"];
+
+	let widgets = $state<WidgetId[]>(["gpa", "attendance"]);
+	let widgetsLoaded = $state(false);
+	let picking = $state(false);
+
+	function toggle(id: WidgetId) {
+		widgets = widgets.includes(id)
+			? widgets.filter((w) => w !== id)
+			: [...widgets, id];
+	}
+
+	$effect(() => {
+		if (widgetsLoaded) localStorage.setItem(WIDGET_KEY, JSON.stringify(widgets));
+	});
+
+	/* ---- widget data (all read from what the other pages already saved) ---- */
+	let gpa = $state<{ cgpa: number; credits: number } | null>(null);
+	let att = $state<{
+		current: number | null;
+		target: number;
+		canSkip: number;
+		worst: { name: string; pct: number } | null;
+	} | null>(null);
+
+	const semLeft = $derived.by(() => {
+		const left = remainingDays(now);
+		const total = WEEKDAYS.reduce((n, d) => n + TEACHING_DAYS[d], 0);
+		const rem = totalDays(left);
+		return { rem, total, pct: total ? ((total - rem) / total) * 100 : 0 };
+	});
+
+	function readGpa() {
+		const s = loadGpa();
+		if (!s) return null;
+		const r =
+			s.mode === "sgpa"
+				? cgpaFromSgpa(s.terms ?? [])
+				: computeCGPA(s.semesters ?? [], s.cohort);
+		return r.totalCreditsRegistered
+			? { cgpa: r.cgpa, credits: r.totalCreditsRegistered }
+			: null;
+	}
+
+	function readAttendance() {
+		try {
+			const raw = localStorage.getItem("scooby.attendance");
+			if (!raw) return null;
+			const v = JSON.parse(raw) as { courses: AttCourse[]; target: number };
+			const named = (v.courses ?? []).filter((c) => c.name?.trim());
+			if (!named.length) return null;
+			const target = v.target ?? 75;
+
+			const sum = named.reduce(
+				(t, c) => {
+					const x = courseTotals(c);
+					return {
+						attended: t.attended + x.attended,
+						missed: t.missed + x.missed,
+						remaining: t.remaining + x.remaining,
+					};
+				},
+				{ attended: 0, missed: 0, remaining: 0 },
+			);
+			const overall = statsFor(sum.attended, sum.missed, sum.remaining, target);
+
+			let worst: { name: string; pct: number } | null = null;
+			for (const c of named) {
+				const t = courseTotals(c);
+				const s = statsFor(t.attended, t.missed, t.remaining, target);
+				if (s.current !== null && (!worst || s.current < worst.pct))
+					worst = { name: c.name, pct: s.current };
+			}
+			return { current: overall.current, target, canSkip: overall.canSkip, worst };
+		} catch {
+			return null;
+		}
+	}
+
+	onMount(() => {
+		const tick = setInterval(() => (now = new Date()), 30_000);
+
+		try {
+			const saved = localStorage.getItem(WIDGET_KEY);
+			if (saved) widgets = JSON.parse(saved);
+		} catch {
+			// keep the defaults
+		}
+		widgetsLoaded = true;
+
+		gpa = readGpa();
+		att = readAttendance();
+
+		const plan = loadPlan();
+		hasPlan = plan.batches.length > 0 || plan.selected.length > 0;
+		if (!hasPlan || !today) {
+			planLoaded = true;
+		} else {
+			fetch("/api/timetable?v=2")
+				.then((r) => r.json())
+				.then((d: { courses?: Course[] }) => {
+					if (d.courses) todays = classesOn(myCourses(d.courses, plan), today);
+				})
+				.catch(() => {})
+				.finally(() => (planLoaded = true));
+		}
+
+		return () => clearInterval(tick);
+	});
+
+	const dateLine = $derived(
+		now.toLocaleDateString(undefined, {
+			weekday: "long",
+			day: "numeric",
+			month: "long",
+		}),
+	);
 </script>
 
 {#snippet icon(name: IconName)}
@@ -133,10 +256,6 @@
 		{:else if name === "attendance"}
 			<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
 			<path d="M22 4 12 14.01l-3-3" />
-		{:else if name === "exam"}
-			<path d="M6 4a1 1 0 0 1 1-1h6l5 5v11a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4z" />
-			<path d="M13 3v5h5" />
-			<path d="M9 13l1.75 1.75L14 11.5" />
 		{:else if name === "clubs"}
 			<circle cx="9" cy="8" r="3" />
 			<path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
@@ -145,9 +264,6 @@
 		{:else if name === "map"}
 			<path d="M12 21s-6.5-5.2-6.5-10a6.5 6.5 0 0 1 13 0c0 4.8-6.5 10-6.5 10z" />
 			<circle cx="12" cy="11" r="2.5" />
-		{:else if name === "switch"}
-			<path d="M4 8h13M13 4l4 4-4 4" />
-			<path d="M20 16H7M11 20l-4-4 4-4" />
 		{:else if name === "minor"}
 			<path d="M12 4L3 8l9 4 9-4-9-4z" />
 			<path d="M6.5 10.2V15c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5v-4.8" />
@@ -166,54 +282,157 @@
 	image="default"
 />
 
-<main class="home">
-	<header class="hero">
-		<p class="eyebrow">University Toolkit</p>
+<main class="dash">
+	<header class="head">
+		<p class="label">{dateLine}</p>
 		<h1>Scooby</h1>
-		<p class="tagline">
-			Everything you need to plan your semester, in one place.
-		</p>
 	</header>
 
-	<a class="promo" href="https://maps.rohitjg.com" target="_blank" rel="noopener noreferrer">
-		<span class="promo-badge">{@render icon("map")}</span>
-		<span class="promo-body">
-			<span class="promo-title">Snoopy</span>
-			<span class="promo-desc">the campus map, with every block, mess and court pinned</span>
-		</span>
-		<span class="promo-cta">
-			<span class="promo-cta-label">Open</span>
-			<svg
-				class="cta-arrow"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="1.5"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				aria-hidden="true"
-			>
-				<path d="M7 17 17 7M9 7h8v8" />
-			</svg>
-		</span>
-	</a>
+	<!-- Today -->
+	<section class="panel today" aria-label="Today">
+		<div class="panel-head">
+			<span class="label">Today</span>
+			{#if todays.length}
+				<span class="count">{done}/{todays.length} done</span>
+			{/if}
+		</div>
 
-	<section class="grid" aria-label="Features">
-		{#each features as feature, i}
-			<a class="card" href={feature.href} target={feature.external ? "_blank" : undefined} rel={feature.external ? "noopener noreferrer" : undefined}>
-				<div class="card-top">
-					<span class="card-badge">{@render icon(feature.icon)}</span>
-					<span class="card-index">{String(i + 1).padStart(2, "0")}</span>
-				</div>
-				<div class="card-body">
-					<span class="card-tag">{feature.tag}</span>
-					<h2 class="card-title">{feature.title}</h2>
-					<p class="card-desc">{feature.description}</p>
-				</div>
-				<span class="card-cta">
-					Open
+		{#if !planLoaded}
+			<p class="quiet">Reading your timetable…</p>
+		{:else if !hasPlan}
+			<div class="empty">
+				<p>No timetable saved yet.</p>
+				<a class="btn btn-primary btn-sm" href="/collision-checker">Build one</a>
+			</div>
+		{:else if !today}
+			<p class="quiet">Sunday. Nothing timetabled.</p>
+		{:else if !todays.length}
+			<p class="quiet">No classes today.</p>
+		{:else if next}
+			<a class="next" href="/collision-checker">
+				<span class="next-when">
+					<span class="next-time">{minutesToTime(next.start)}</span>
+					<span class="next-until">{untilLabel(next)}</span>
+				</span>
+				<span class="next-body">
+					<span class="next-code">{next.courseCode}</span>
+					<span class="next-name">{next.courseName}</span>
+					<span class="next-meta">
+						{next.room || "Room TBA"}{next.faculty ? ` · ${next.faculty}` : ""}
+					</span>
+				</span>
+			</a>
+
+			{#if todays.length > 1}
+				<ul class="rest">
+					{#each todays as c}
+						<li class:past={c.end <= mins} class:current={c === next}>
+							<span class="mono">{minutesToTime(c.start)}</span>
+							<span class="rest-code">{c.courseCode}</span>
+							<span class="rest-name">{c.courseName}</span>
+							<span class="rest-room mono">{c.room || "—"}</span>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		{:else}
+			<p class="quiet">That's all of today's classes done.</p>
+		{/if}
+	</section>
+
+	<!-- Widgets -->
+	<section aria-label="Widgets">
+		<div class="panel-head widgets-head">
+			<span class="label">Widgets</span>
+			<button class="add" onclick={() => (picking = !picking)} aria-expanded={picking}>
+				{picking ? "Done" : "Edit"}
+			</button>
+		</div>
+
+		{#if picking}
+			<div class="chips">
+				{#each ALL_WIDGETS as w}
+					<button
+						class="chip"
+						class:on={widgets.includes(w.id)}
+						onclick={() => toggle(w.id)}
+					>
+						{widgets.includes(w.id) ? "−" : "+"}
+						{w.name}
+					</button>
+				{/each}
+			</div>
+		{/if}
+
+		{#if widgets.length}
+			<div class="widgets">
+				{#if widgets.includes("gpa")}
+					<a class="panel widget" href="/gpa">
+						<span class="label">CGPA</span>
+						{#if gpa}
+							<span class="stat">{gpa.cgpa.toFixed(2)}</span>
+							<span class="sub">{gpa.credits} credits graded</span>
+						{:else}
+							<span class="stat dim">—</span>
+							<span class="sub">Add your grades</span>
+						{/if}
+					</a>
+				{/if}
+
+				{#if widgets.includes("attendance")}
+					<a class="panel widget" href="/attendance-calculator">
+						<span class="label">Attendance</span>
+						{#if att && att.current !== null}
+							<span
+								class="stat"
+								style:color={att.current >= att.target ? "var(--ok)" : "var(--bad)"}
+								>{att.current.toFixed(0)}<span class="unit">%</span></span
+							>
+							<span class="sub">
+								{att.canSkip > 0
+									? `${att.canSkip} more you can skip`
+									: `below your ${att.target}% target`}
+							</span>
+							{#if att.worst}
+								<span class="sub dim">
+									lowest: {att.worst.name} · {att.worst.pct.toFixed(0)}%
+								</span>
+							{/if}
+						{:else}
+							<span class="stat dim">—</span>
+							<span class="sub">Log your classes</span>
+						{/if}
+					</a>
+				{/if}
+
+				{#if widgets.includes("semester")}
+					<a class="panel widget" href="/academic-calendar">
+						<span class="label">Semester</span>
+						<span class="stat">{semLeft.rem}<span class="unit">days</span></span>
+						<span class="sub">of teaching left</span>
+						<span class="bar"><span style:width="{semLeft.pct}%"></span></span>
+					</a>
+				{/if}
+			</div>
+		{:else}
+			<p class="quiet">No widgets. Hit Edit to add one.</p>
+		{/if}
+	</section>
+
+	<!-- Everything else -->
+	<section aria-label="All tools">
+		<div class="panel-head"><span class="label">Everything else</span></div>
+		<div class="index">
+			{#each features as f}
+				<a class="row" href={f.href}>
+					<span class="row-icon">{@render icon(f.icon)}</span>
+					<span class="row-body">
+						<span class="row-title">{f.title}</span>
+						<span class="row-blurb">{f.blurb}</span>
+					</span>
+					<span class="row-tag mono">{f.tag}</span>
 					<svg
-						class="cta-arrow"
+						class="row-arrow"
 						viewBox="0 0 24 24"
 						fill="none"
 						stroke="currentColor"
@@ -222,32 +441,260 @@
 						stroke-linejoin="round"
 						aria-hidden="true"
 					>
-						<path d="M5 12h14M13 6l6 6-6 6" />
+						<path d="M9 6l6 6-6 6" />
 					</svg>
+				</a>
+			{/each}
+
+			<a
+				class="row"
+				href="https://maps.rohitjg.com"
+				target="_blank"
+				rel="noopener noreferrer"
+			>
+				<span class="row-icon">{@render icon("map")}</span>
+				<span class="row-body">
+					<span class="row-title">Snoopy</span>
+					<span class="row-blurb">
+						The campus map — every block, mess and court pinned.
+					</span>
 				</span>
+				<span class="row-tag mono">Campus</span>
+				<svg
+					class="row-arrow"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.5"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
+				>
+					<path d="M7 17 17 7M9 7h8v8" />
+				</svg>
 			</a>
-		{/each}
+		</div>
 	</section>
 </main>
 
 <style>
-	.home {
-		position: relative;
+	.dash {
 		flex: 1;
 		width: 100%;
-		max-width: 920px;
+		max-width: 780px;
 		margin: 0 auto;
-		padding: 5rem 1.5rem 3rem;
+		padding: 3.5rem 1.25rem 2rem;
+		display: flex;
+		flex-direction: column;
+		gap: 2.25rem;
 	}
 
-	/* Campus map banner — a different product, so it doesn't sit in the grid */
-	.promo {
-		position: relative;
+	.head h1 {
+		font-size: clamp(2.6rem, 11vw, 3.4rem);
+		margin-top: 0.35rem;
+	}
+
+	.panel-head {
 		display: flex;
 		align-items: center;
+		justify-content: space-between;
+		padding-bottom: 0.6rem;
+		margin-bottom: 0.85rem;
+		border-bottom: 1px solid var(--border);
+	}
+
+	.count {
+		font-family: var(--font-mono);
+		font-size: 0.68rem;
+		color: var(--text-muted);
+	}
+
+	.quiet {
+		color: var(--text-muted);
+		font-size: 0.9rem;
+		padding: 0.4rem 0;
+	}
+
+	.empty {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		flex-wrap: wrap;
+		color: var(--text-secondary);
+		font-size: 0.9rem;
+	}
+
+	/* --- next class --- */
+	.next {
+		display: flex;
+		gap: 1.1rem;
+		padding: 1.1rem 1.15rem;
+		border: 1px solid var(--border-hover);
+		border-left: 2px solid var(--accent);
+		border-radius: var(--radius);
+		background: var(--bg-card);
+		color: var(--text);
+		text-decoration: none;
+		transition: background 0.15s;
+	}
+
+	.next:hover {
+		background: var(--bg-hover);
+	}
+
+	.next-when {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		flex: none;
+		min-width: 5.5rem;
+	}
+
+	.next-time {
+		font-family: var(--font-mono);
+		font-size: 1rem;
+		color: var(--accent);
+	}
+
+	.next-until {
+		font-family: var(--font-mono);
+		font-size: 0.68rem;
+		color: var(--text-muted);
+	}
+
+	.next-body {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		min-width: 0;
+	}
+
+	.next-code {
+		font-family: var(--font-mono);
+		font-size: 0.7rem;
+		color: var(--text-muted);
+		letter-spacing: 0.06em;
+	}
+
+	.next-name {
+		font-family: var(--font-display);
+		font-size: 1.35rem;
+		line-height: 1.15;
+	}
+
+	.next-meta {
+		font-size: 0.8rem;
+		color: var(--text-secondary);
+	}
+
+	/* --- rest of the day --- */
+	.rest {
+		list-style: none;
+		margin-top: 0.9rem;
+	}
+
+	.rest li {
+		display: grid;
+		grid-template-columns: 5.5rem 5.5rem 1fr auto;
+		align-items: baseline;
 		gap: 0.75rem;
-		margin-bottom: 1.5rem;
-		padding: 0.6rem 0.85rem;
+		padding: 0.5rem 0.2rem;
+		border-bottom: 1px solid var(--border);
+		font-size: 0.85rem;
+	}
+
+	.rest li:last-child {
+		border-bottom: none;
+	}
+
+	.rest li.past {
+		opacity: 0.4;
+	}
+
+	.rest li.current .rest-name {
+		color: var(--text);
+	}
+
+	.rest-code {
+		font-family: var(--font-mono);
+		font-size: 0.72rem;
+		color: var(--text-secondary);
+	}
+
+	.rest-name,
+	.rest-room {
+		color: var(--text-secondary);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.rest-room {
+		font-size: 0.72rem;
+		color: var(--text-muted);
+	}
+
+	.mono {
+		font-family: var(--font-mono);
+		font-size: 0.75rem;
+		color: var(--text-muted);
+	}
+
+	/* --- widgets --- */
+	.widgets-head .add {
+		font-family: var(--font-mono);
+		font-size: 0.65rem;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+		background: none;
+		border: none;
+		cursor: pointer;
+		padding: 0;
+		transition: color 0.15s;
+	}
+
+	.widgets-head .add:hover {
+		color: var(--accent);
+	}
+
+	.chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		margin-bottom: 0.85rem;
+	}
+
+	.chip {
+		padding: 0.3rem 0.6rem;
+		border: 1px dashed var(--border-hover);
+		border-radius: var(--radius-sm);
+		background: none;
+		color: var(--text-secondary);
+		font-family: var(--font-mono);
+		font-size: 0.72rem;
+		cursor: pointer;
+	}
+
+	.chip.on {
+		border-style: solid;
+		border-color: var(--accent);
+		color: var(--accent);
+		background: var(--accent-dim);
+	}
+
+	.widgets {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+		gap: 0.75rem;
+	}
+
+	.widget {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		padding: 1rem 1.1rem 1.1rem;
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
 		background: var(--bg-card);
@@ -255,259 +702,160 @@
 		text-decoration: none;
 		transition:
 			border-color 0.15s,
-			transform 0.15s;
+			background 0.15s;
 	}
 
-	.promo:hover {
-		border-color: var(--text-secondary);
-		transform: translateY(-2px);
-	}
-
-	.promo-badge {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		flex: none;
-		width: 28px;
-		height: 28px;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		background: var(--bg-input);
-	}
-
-	.promo-badge :global(.icon) {
-		width: 15px;
-		height: 15px;
-	}
-
-	.promo-body {
-		display: flex;
-		align-items: baseline;
-		gap: 0.5rem;
-		min-width: 0;
-	}
-
-	.promo-title {
-		font-size: 0.85rem;
-		font-weight: 500;
-	}
-
-	.promo-desc {
-		font-size: 0.78rem;
-		color: var(--text-secondary);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.promo-cta {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.35rem;
-		margin-left: auto;
-		flex: none;
-		padding: 0.25rem 0.55rem;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		font-size: 0.72rem;
-		color: var(--text-secondary);
-	}
-
-	.promo:hover .promo-cta {
-		background: var(--text);
-		border-color: var(--text);
-		color: var(--bg);
-	}
-
-	/* On mobile the one-line title + desc ellipses away to nothing, so stack
-	   them and shrink the CTA to just the arrow. */
-	@media (max-width: 560px) {
-		.promo {
-			gap: 0.65rem;
-			padding: 0.65rem 0.75rem;
-		}
-
-		.promo-body {
-			flex-direction: column;
-			align-items: flex-start;
-			gap: 0.1rem;
-		}
-
-		.promo-desc {
-			white-space: normal;
-			font-size: 0.72rem;
-			line-height: 1.35;
-		}
-
-		.promo-cta {
-			padding: 0.3rem;
-			border: none;
-			color: var(--text-muted);
-		}
-
-		.promo-cta-label {
-			display: none;
-		}
-	}
-
-	/* ponytail: hero glow lives on body in app.css, every page gets it */
-
-	.hero {
-		position: relative;
-		z-index: 1;
-		text-align: center;
-		margin-bottom: 3.5rem;
-	}
-
-	.eyebrow {
-		font-family: var(--font-mono);
-		font-size: 0.72rem;
-		letter-spacing: 0.22em;
-		text-transform: uppercase;
-		color: var(--text-secondary);
-		margin-bottom: 1rem;
-	}
-
-	.hero h1 {
-		font-size: clamp(2.75rem, 8vw, 4rem);
-		font-weight: 700;
-		letter-spacing: -0.04em;
-		line-height: 1;
-	}
-
-	.tagline {
-		margin: 1rem auto 0;
-		max-width: 34ch;
-		color: var(--text-secondary);
-		font-size: 1.05rem;
-		line-height: 1.5;
-	}
-
-	.grid {
-		position: relative;
-		z-index: 1;
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-		gap: 1.25rem;
-	}
-
-	.card {
-		display: flex;
-		flex-direction: column;
-		gap: 1.25rem;
-		padding: 1.5rem;
-		min-height: 230px;
-		background: var(--bg-card);
-		border: 1px solid var(--border);
-		border-radius: 14px;
-		color: var(--text);
-		text-decoration: none;
-		transition:
-			border-color 0.2s ease,
-			transform 0.2s ease,
-			box-shadow 0.2s ease;
-	}
-
-	a.card:hover {
-		border-color: var(--border-hover);
-		transform: translateY(-3px);
-		box-shadow: var(--shadow);
-	}
-
-	.card-top {
-		display: flex;
-		align-items: flex-start;
-		justify-content: space-between;
-	}
-
-	.card-badge {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 28px;
-		height: 28px;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		background: var(--bg-input);
-		transition:
-			border-color 0.2s ease,
-			background 0.2s ease;
-	}
-
-	a.card:hover .card-badge {
+	.widget:hover {
 		border-color: var(--border-hover);
 		background: var(--bg-hover);
 	}
 
-	.icon {
-		width: 22px;
-		height: 22px;
+	.stat {
+		font-family: var(--font-display);
+		font-size: 2.4rem;
+		line-height: 1.1;
+		margin-top: 0.5rem;
 	}
 
-	.card-index {
-		font-family: var(--font-mono);
-		font-size: 0.75rem;
+	.stat.dim {
 		color: var(--text-muted);
 	}
 
-	.card-body {
+	.unit {
+		font-family: var(--font-mono);
+		font-size: 0.8rem;
+		color: var(--text-muted);
+		margin-left: 0.25rem;
+	}
+
+	.sub {
+		font-size: 0.78rem;
+		color: var(--text-secondary);
+	}
+
+	.sub.dim {
+		color: var(--text-muted);
+		font-size: 0.72rem;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.bar {
+		display: block;
+		height: 2px;
+		margin-top: 0.7rem;
+		background: var(--border);
+	}
+
+	.bar span {
+		display: block;
+		height: 100%;
+		background: var(--accent);
+	}
+
+	/* --- index --- */
+	.index {
+		border-top: 1px solid var(--border);
+	}
+
+	.row {
+		display: flex;
+		align-items: center;
+		gap: 0.85rem;
+		padding: 0.85rem 0.35rem;
+		border-bottom: 1px solid var(--border);
+		color: var(--text);
+		text-decoration: none;
+		transition: background 0.15s;
+	}
+
+	.row:hover {
+		background: var(--bg-card);
+	}
+
+	.row-icon {
+		flex: none;
+		color: var(--text-muted);
+		display: inline-flex;
+	}
+
+	.row:hover .row-icon {
+		color: var(--accent);
+	}
+
+	.icon {
+		width: 18px;
+		height: 18px;
+	}
+
+	.row-body {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
 		flex: 1;
 	}
 
-	.card-tag {
-		display: inline-block;
-		font-family: var(--font-mono);
-		font-size: 0.66rem;
+	.row-title {
+		font-size: 0.95rem;
+		font-weight: 500;
+	}
+
+	.row-blurb {
+		font-size: 0.8rem;
+		color: var(--text-muted);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.row-tag {
+		flex: none;
+		font-size: 0.62rem;
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
+	}
+
+	.row-arrow {
+		flex: none;
+		width: 15px;
+		height: 15px;
 		color: var(--text-muted);
-		margin-bottom: 0.6rem;
+		transition: transform 0.15s;
 	}
 
-	.card-title {
-		font-size: 1.15rem;
-		font-weight: 600;
-		letter-spacing: -0.015em;
+	.row:hover .row-arrow {
+		transform: translateX(3px);
+		color: var(--accent);
 	}
 
-	.card-desc {
-		margin-top: 0.5rem;
-		color: var(--text-secondary);
-		font-size: 0.875rem;
-		line-height: 1.5;
-	}
-
-	.card-cta {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-		font-size: 0.85rem;
-		font-weight: 500;
-		color: var(--text-secondary);
-		transition: color 0.2s ease;
-	}
-
-	.cta-arrow {
-		width: 16px;
-		height: 16px;
-		transition: transform 0.2s ease;
-	}
-
-	a.card:hover .card-cta {
-		color: var(--text);
-	}
-
-	a.card:hover .cta-arrow {
-		transform: translateX(4px);
-	}
-
-	@media (max-width: 600px) {
-		.home {
-			padding: 3rem 1rem 2rem;
+	@media (max-width: 560px) {
+		.dash {
+			padding: 2.5rem 1rem 1.5rem;
+			gap: 1.75rem;
 		}
 
-		.card {
-			min-height: 0;
+		.next {
+			flex-direction: column;
+			gap: 0.6rem;
+		}
+
+		.next-when {
+			flex-direction: row;
+			align-items: baseline;
+			gap: 0.5rem;
+		}
+
+		.rest li {
+			grid-template-columns: 4.6rem 1fr auto;
+		}
+
+		.rest-code {
+			display: none;
+		}
+
+		.row-tag {
+			display: none;
 		}
 	}
 </style>

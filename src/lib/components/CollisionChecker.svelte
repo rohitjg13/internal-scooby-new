@@ -22,6 +22,7 @@
 		findCombo,
 		assignLanes,
 	} from "$lib/coursePlanner";
+	import { STORE_VERSION, key, BATCH_KEY, NOBATCH_KEY } from "$lib/mySchedule";
 	import { toPng } from "html-to-image";
 	import { createEvents } from "ics";
 	import type { EventAttributes } from "ics";
@@ -302,16 +303,11 @@
 		selectedCourseDetails = course;
 	}
 
-	// Saved picks are per-semester. Bump this only when the sheet changes so
-	// much that saved codes are meaningless (a new semester) — a routine
+	// Saved picks are per-semester; the keys live in $lib/mySchedule so the
+	// dashboard reads exactly what this page writes. Bump STORE_VERSION there
+	// only when saved codes stop meaning anything (a new semester) — a routine
 	// timetable update is handled by re-resolving picks against the new rows
 	// after the fetch below, so nobody gets sent back to the batch screen.
-	const STORE_VERSION = "monsoon26r21";
-	const key = (name: string) => `scooby_${STORE_VERSION}_${name}`;
-	// Your batch is who you are, not what you picked, so it lives outside the
-	// version and survives every bump.
-	const BATCH_KEY = "scooby_batches_kept";
-	const NOBATCH_KEY = "scooby_nobatch_kept";
 
 	// Past the batch screen, either with a batch or on an empty slate
 	let inApp = $derived($currentBatches.length > 0 || skipBatch);
