@@ -14,7 +14,7 @@ academic calendar, hostel room swaps — in one SvelteKit app.
 | `/academic-calendar` | Holidays, exam weeks and add/drop deadlines, parsed straight out of the calendar PDF |
 | `/changes` | Every revision to the published timetable, diffed |
 | `/clubs` | Cultural and technical clubs (hidden from home grid) |
-| `/minors` | Undergraduate minors, new and old curriculum (hidden from home grid) |
+| `/minors` | Undergraduate minors, new and old curriculum, with a browser-local progress tracker (hidden from home grid) |
 
 ## Running it
 
