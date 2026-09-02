@@ -42,22 +42,30 @@ export function loadPlan(): SavedPlan {
  * Every class row that is actually yours: your batch's rows plus what you
  * added, with swaps applied and exclusions dropped — the same resolution the
  * planner's calendar does.
+ *
+ * A course code has one row per meeting (BIO1004-LEC1 is Tue 4:20 *and* Thu
+ * 2:10), so deduping is by code to decide what's in your plan; every row of a
+ * kept code then comes through, or half your week goes missing.
  */
 export function myCourses(all: Course[], plan: SavedPlan): Course[] {
+	const byCode = new Map<string, Course[]>();
+	for (const c of all) {
+		const rows = byCode.get(c.courseCode);
+		if (rows) rows.push(c);
+		else byCode.set(c.courseCode, [c]);
+	}
+
 	const batches = plan.batches.map((b) => b.toUpperCase().trim()).filter(Boolean);
 	const mine = batches.length
 		? all.filter((c) => offeredTo(c, batches) && !isMajorElective(c))
 		: [];
-	const codes = new Set(plan.selected.map((c) => c.courseCode));
 
-	const seen = new Set<string>();
+	const codes = new Set([...mine, ...plan.selected].map((c) => c.courseCode));
+
 	const out: Course[] = [];
-	for (const c of [...mine, ...all.filter((c) => codes.has(c.courseCode))]) {
-		if (seen.has(c.courseCode)) continue;
-		seen.add(c.courseCode);
-		if (plan.excluded.has(c.courseCode)) continue;
-		const to = plan.swapped.get(c.courseCode);
-		out.push((to && all.find((x) => x.courseCode === to)) || c);
+	for (const code of codes) {
+		if (plan.excluded.has(code)) continue;
+		out.push(...(byCode.get(plan.swapped.get(code) ?? code) ?? []));
 	}
 	return out;
 }
