@@ -127,7 +127,13 @@
 		if (!node) return;
 
 		try {
-			const dataUrl = await toPng(node, { backgroundColor: "#08080a" });
+			// Read the paper colour off the theme rather than restating it — an
+			// exported image with a stale background is dark text on dark.
+			const paper =
+				getComputedStyle(document.documentElement)
+					.getPropertyValue("--bg-card")
+					.trim() || "#ffffff";
+			const dataUrl = await toPng(node, { backgroundColor: paper });
 			const cleanBatch = ($currentBatches.join("_") || "custom").replace(
 				/[^a-z0-9]/gi,
 				"_",
@@ -1053,11 +1059,12 @@
 	// Every department gets its own hue, so nothing repeats. Consecutive
 	// departments are spun by the golden angle rather than stepped, which
 	// keeps neighbours in the alphabetical grid far apart on the wheel.
-	// Low chroma, high lightness — a tint, not a highlighter. Fixed L/C in
-	// OKLCH so no hue reads brighter or heavier than another.
+	// Moderate chroma, and lightness handed over to the theme (--tint-l): the
+	// hue has to hold its own as a 3px marker on paper and still glow on a
+	// dark ground. Fixed C in OKLCH so no hue reads heavier than another.
 	function deptColor(dept: string): string {
 		const hue = ((deptOrder.get(dept) ?? 0) * 137.508) % 360;
-		return `oklch(0.82 0.085 ${hue.toFixed(1)})`;
+		return `oklch(var(--tint-l, 0.58) 0.15 ${hue.toFixed(1)})`;
 	}
 
 	// Per-course colour overrides, keyed by base code and kept in this
@@ -1339,7 +1346,7 @@
 	{@const batches = batchesFor(base)}
 	<div
 		class="course-list-item"
-		style="--accent: {courseAccent(sample)}"
+		style="--tint: {courseAccent(sample)}"
 		class:dimmed={!fits}
 	>
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
@@ -1747,7 +1754,7 @@
 													class:added={block.isAdded}
 												style="top: {top}%; height: {height}%; min-height: 45px; left: calc({(100 /
 													block.cols) *
-													block.col}% + 2px); width: calc({100 / block.cols}% - 4px); --accent: {courseAccent(
+													block.col}% + 2px); width: calc({100 / block.cols}% - 4px); --tint: {courseAccent(
 													block.course,
 												)}"
 													onclick={() =>
@@ -2749,7 +2756,7 @@
 							{#each [...deptCounts].filter(([, n]) => n > 0) as [dept, count]}
 								<button
 									class="dept-card"
-									style="--accent: {deptColor(dept)}"
+									style="--tint: {deptColor(dept)}"
 									onclick={() => openBrowseDept(dept)}
 								>
 									<span class="dept-code">
@@ -2963,7 +2970,7 @@
 		display: flex;
 		flex-direction: column;
 		background: var(--bg);
-		color: #fff;
+		color: var(--text);
 		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 	}
 
@@ -3005,7 +3012,7 @@
 		padding: 0;
 		background: none;
 		border: none;
-		color: #777;
+		color: var(--text-muted);
 		font-family: inherit;
 		font-size: 0.72rem;
 		text-decoration: underline;
@@ -3013,13 +3020,13 @@
 		cursor: pointer;
 	}
 	.skip-batch:hover {
-		color: #fff;
+		color: var(--text);
 	}
 
 	.batch-form-footer {
 		margin-top: 1.5rem;
 		padding-top: 1.5rem;
-		border-top: 1px solid #222;
+		border-top: 1px solid var(--border);
 		text-align: center;
 	}
 
@@ -3033,7 +3040,7 @@
 		left: 0;
 		right: 0;
 		background: var(--bg-card);
-		border: 1px solid #222;
+		border: 1px solid var(--border);
 		border-radius: 6px;
 		margin-top: 4px;
 		max-height: 200px;
@@ -3047,8 +3054,8 @@
 		padding: 0.6rem 0.75rem;
 		background: none;
 		border: none;
-		border-bottom: 1px solid #1a1a1a;
-		color: #fff;
+		border-bottom: 1px solid var(--border);
+		color: var(--text);
 		font-size: 0.85rem;
 		font-family: "SF Mono", monospace;
 		cursor: pointer;
@@ -3060,18 +3067,18 @@
 	}
 
 	.batch-option:hover {
-		background: #111;
+		background: var(--bg-sunken);
 	}
 
 	code {
-		background: #111;
+		background: var(--bg-sunken);
 		padding: 0.2rem 0.5rem;
 		border-radius: 4px;
 		font-family: monospace;
 	}
 
 	.muted {
-		color: #666;
+		color: var(--text-muted);
 	}
 	.small {
 		font-size: 0.75rem;
@@ -3081,7 +3088,7 @@
 		font-size: 0.85rem;
 	}
 	.comp-label {
-		color: #777;
+		color: var(--text-muted);
 		font-weight: 400;
 		font-size: 0.75rem;
 	}
@@ -3100,7 +3107,7 @@
 		align-items: center;
 		gap: 1rem;
 		padding-bottom: 1rem;
-		border-bottom: 1px solid #1a1a1a;
+		border-bottom: 1px solid var(--border);
 		margin-bottom: 1.5rem;
 		flex-wrap: wrap;
 	}
@@ -3128,19 +3135,19 @@
 
 	.tag {
 		padding: 0.2rem 0.5rem;
-		background: #111;
+		background: var(--bg-sunken);
 		border-radius: 4px;
 		font-size: 0.7rem;
-		color: #888;
+		color: var(--text-secondary);
 	}
 	.tag-button {
-		border: 1px dashed #333;
+		border: 1px dashed var(--border-hover);
 		cursor: pointer;
 		font-family: inherit;
 	}
 	.tag-button:hover {
-		color: #fff;
-		border-color: #555;
+		color: var(--text);
+		border-color: var(--border-strong);
 	}
 
 	.tag.small {
@@ -3152,8 +3159,8 @@
 		display: flex;
 		align-items: center;
 		gap: 2px;
-		background: #111;
-		border: 1px solid #222;
+		background: var(--bg-sunken);
+		border: 1px solid var(--border);
 		padding: 0.2rem 0.5rem;
 		border-radius: 4px;
 		font-size: 0.8rem;
@@ -3162,21 +3169,21 @@
 
 	.credits-val {
 		font-weight: 600;
-		color: #fff;
+		color: var(--text);
 	}
 	.credits-val.over {
-		color: #ffaa00;
+		color: var(--warn);
 	}
 
 	.credits-sep {
-		color: #555;
+		color: var(--text-muted);
 		margin: 0 1px;
 	}
 
 	.credits-max {
 		background: transparent;
 		border: none;
-		color: #888;
+		color: var(--text-secondary);
 		width: 2ch;
 		font-size: 0.8rem;
 		padding: 0;
@@ -3188,8 +3195,8 @@
 	}
 	.credits-max:focus {
 		outline: none;
-		color: #fff;
-		border-bottom: 1px solid #444;
+		color: var(--text);
+		border-bottom: 1px solid var(--border-hover);
 	}
 	.credits-max::-webkit-outer-spin-button,
 	.credits-max::-webkit-inner-spin-button {
@@ -3197,18 +3204,18 @@
 		margin: 0;
 	}
 	.credits-label {
-		color: #444;
+		color: var(--text-muted);
 		font-size: 0.7rem;
 		margin-left: 2px;
 	}
 
 	.cr-badge {
 		font-size: 0.65rem;
-		background: #1a1a1a;
-		color: #888;
+		background: var(--bg-card);
+		color: var(--text-secondary);
 		padding: 1px 4px;
 		border-radius: 3px;
-		border: 1px solid #222;
+		border: 1px solid var(--border);
 		font-family: "SF Mono", monospace;
 	}
 
@@ -3239,32 +3246,32 @@
 		align-items: center;
 		gap: 0.4rem;
 		padding: 0.3rem 0.5rem;
-		background: #151515;
-		border: 1px solid #222;
+		background: var(--bg-sunken);
+		border: 1px solid var(--border);
 		border-radius: 4px;
 		cursor: pointer;
 		transition: all 0.2s;
 		font-size: 0.75rem;
-		color: #888;
+		color: var(--text-secondary);
 		width: fit-content;
 	}
 
 	.uwe-toggle:hover {
-		background: #1a1a1a;
-		border-color: #333;
+		background: var(--bg-card);
+		border-color: var(--border-hover);
 	}
 
 	.uwe-toggle:has(input:checked) {
-		background: #1a1a1a;
-		border-color: #444;
-		color: #fff;
+		background: var(--bg-card);
+		border-color: var(--border-hover);
+		color: var(--text);
 	}
 
 	.uwe-toggle input {
 		width: 14px;
 		height: 14px;
 		margin: 0;
-		accent-color: #fff;
+		accent-color: var(--text);
 		cursor: pointer;
 	}
 
@@ -3276,11 +3283,11 @@
 
 	.item-name {
 		font-size: 0.8rem;
-		color: #888;
+		color: var(--text-secondary);
 	}
 	.item-type {
 		font-size: 0.7rem;
-		color: #555;
+		color: var(--text-muted);
 		font-style: italic;
 	}
 
@@ -3293,8 +3300,8 @@
 	.calendar-scroll-wrapper {
 		overflow-x: auto;
 		overflow-y: hidden; /* Prevent Y scrollbar on wrapper */
-		background: #050505;
-		border: 1px solid #1a1a1a;
+		background: var(--bg);
+		border: 1px solid var(--border);
 		border-radius: 8px;
 		padding: 0 20px;
 	}
@@ -3303,7 +3310,7 @@
 		overflow: visible;
 		height: auto;
 		min-width: max-content;
-		background: #050505;
+		background: var(--bg);
 	}
 
 	.calendar {
@@ -3315,9 +3322,9 @@
 	}
 
 	.time-gutter {
-		background: #050505;
-		border-right: 1px solid #1a1a1a;
-		border-bottom: 1px solid #1a1a1a;
+		background: var(--bg);
+		border-right: 1px solid var(--border);
+		border-bottom: 1px solid var(--border);
 	}
 
 	.day-header {
@@ -3325,9 +3332,9 @@
 		text-align: center;
 		font-size: 0.85rem;
 		font-weight: 500;
-		background: #050505;
-		border-bottom: 1px solid #1a1a1a;
-		border-right: 1px solid #111;
+		background: var(--bg);
+		border-bottom: 1px solid var(--border);
+		border-right: 1px solid var(--border);
 	}
 	.day-header:last-child {
 		border-right: none;
@@ -3335,8 +3342,8 @@
 
 	.time-column {
 		position: relative;
-		background: #050505;
-		border-right: 1px solid #1a1a1a;
+		background: var(--bg);
+		border-right: 1px solid var(--border);
 	}
 
 	.time-label {
@@ -3344,14 +3351,14 @@
 		right: 8px;
 		transform: translateY(-50%);
 		font-size: 0.65rem;
-		color: #555;
+		color: var(--text-muted);
 		font-family: "SF Mono", monospace;
 		white-space: nowrap;
 	}
 
 	.day-column {
 		position: relative;
-		border-right: 1px solid #111;
+		border-right: 1px solid var(--border);
 	}
 	.day-column:last-child {
 		border-right: none;
@@ -3362,15 +3369,15 @@
 		left: 0;
 		right: 0;
 		height: 1px;
-		background: #1a1a1a;
+		background: var(--bg-card);
 	}
 
 	/* left/width come from the lane assignment inline */
 	.course-block {
 		position: absolute;
-		background: color-mix(in srgb, var(--accent, #111) 8%, #111);
-		border: 1px solid #222;
-		border-left: 2px solid var(--accent, #2a2a2a);
+		background: color-mix(in srgb, var(--tint, var(--accent)) 14%, var(--bg-card));
+		border: 1px solid var(--border);
+		border-left: 3px solid var(--tint, var(--accent));
 		border-radius: 4px;
 		padding: 4px 6px;
 		overflow: hidden;
@@ -3391,10 +3398,10 @@
 		width: calc(100% - 4px) !important;
 		z-index: 50;
 		transform: scale(1.05);
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+		box-shadow: var(--shadow-lift);
 		overflow: visible;
 		min-height: fit-content !important;
-		background: color-mix(in srgb, var(--accent, #1a1a1a) 14%, #1a1a1a);
+		background: color-mix(in srgb, var(--tint, var(--accent)) 24%, var(--bg-card));
 	}
 
 	.course-block:hover .block-name,
@@ -3410,9 +3417,9 @@
 	/* "Added by you" rides on the other three edges — the left edge carries
 	   the department/UWE/CCC colour and must not be overwritten. */
 	.course-block.added {
-		border-top-color: #444;
-		border-right-color: #444;
-		border-bottom-color: #444;
+		border-top-color: var(--border-hover);
+		border-right-color: var(--border-hover);
+		border-bottom-color: var(--border-hover);
 	}
 
 	.block-code {
@@ -3427,13 +3434,13 @@
 	.block-time {
 		font-family: "SF Mono", monospace;
 		font-size: 0.6rem;
-		color: #777;
+		color: var(--text-muted);
 		white-space: nowrap;
 	}
 
 	.block-name {
 		font-size: 0.65rem;
-		color: #888;
+		color: var(--text-secondary);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -3441,13 +3448,13 @@
 
 	.block-type {
 		font-size: 0.6rem;
-		color: #666;
+		color: var(--text-muted);
 		font-style: italic;
 	}
 
 	.block-room {
 		font-size: 0.6rem;
-		color: #555;
+		color: var(--text-muted);
 	}
 
 	/* Lists */
@@ -3475,7 +3482,7 @@
 		gap: 2px;
 		padding: 0.6rem 0.75rem;
 		background: var(--bg-card);
-		border: 1px solid #151515;
+		border: 1px solid var(--border);
 		border-radius: 6px;
 		margin-bottom: 0.5rem;
 	}
@@ -3488,17 +3495,17 @@
 	}
 
 	.list-item.clickable:hover {
-		background: #111;
-		border-color: #252525;
+		background: var(--bg-sunken);
+		border-color: var(--border);
 	}
 
 	.list-item.added {
-		border-left: 2px solid #333;
+		border-left: 2px solid var(--border-hover);
 	}
 
 	.list-item.swapped {
-		border-left: 2px solid #555;
-		background: #0d0d0d;
+		border-left: 2px solid var(--border-strong);
+		background: var(--bg);
 	}
 
 	.course-main-info {
@@ -3517,10 +3524,10 @@
 
 	.swap-btn {
 		padding: 0.3rem 0.6rem;
-		background: #fff;
-		border: 1px solid #fff;
+		background: var(--accent);
+		border: 1px solid var(--accent);
 		border-radius: 4px;
-		color: #000;
+		color: var(--accent-ink);
 		font-size: 0.75rem;
 		font-weight: 600;
 		cursor: pointer;
@@ -3528,13 +3535,13 @@
 	}
 
 	.swap-btn:hover {
-		background: #e0e0e0;
-		border-color: #e0e0e0;
+		background: var(--accent-hover);
+		border-color: var(--accent-hover);
 	}
 
 	.slot-label {
 		font-size: 0.7rem;
-		color: #555;
+		color: var(--text-muted);
 		font-family: "SF Mono", monospace;
 	}
 
@@ -3542,27 +3549,27 @@
 		margin-top: 0.3rem;
 		padding: 0.2rem 0.4rem;
 		background: none;
-		border: 1px solid #333;
+		border: 1px solid var(--border-hover);
 		border-radius: 4px;
-		color: #666;
+		color: var(--text-muted);
 		font-size: 0.65rem;
 		cursor: pointer;
 	}
 
 	.reset-swap-btn:hover {
-		background: #1a1a1a;
-		color: #888;
+		background: var(--bg-card);
+		color: var(--text-secondary);
 	}
 
 	.swap-dropdown {
 		margin-top: 0.5rem;
 		padding-top: 0.5rem;
-		border-top: 1px solid #222;
+		border-top: 1px solid var(--border);
 	}
 
 	.swap-header {
 		font-size: 0.7rem;
-		color: #666;
+		color: var(--text-muted);
 		margin-bottom: 0.4rem;
 	}
 
@@ -3573,19 +3580,19 @@
 		align-items: center;
 		width: 100%;
 		padding: 0.5rem;
-		background: #111;
-		border: 1px solid #222;
+		background: var(--bg-sunken);
+		border: 1px solid var(--border);
 		border-radius: 4px;
 		margin-bottom: 0.3rem;
-		color: #fff;
+		color: var(--text);
 		font-size: 0.75rem;
 		cursor: pointer;
 		text-align: left;
 	}
 
 	.swap-option:hover:not(:disabled) {
-		background: #1a1a1a;
-		border-color: #333;
+		background: var(--bg-card);
+		border-color: var(--border-hover);
 	}
 
 	.swap-option:disabled {
@@ -3598,14 +3605,14 @@
 	}
 
 	.swap-option.is-current {
-		border-color: #555;
-		background: #1a1a1a;
+		border-color: var(--border-strong);
+		background: var(--bg-card);
 		cursor: default;
 	}
 
 	.current-badge {
 		font-size: 0.65rem;
-		color: #888;
+		color: var(--text-secondary);
 		margin-left: 0.4rem;
 		font-weight: normal;
 		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -3617,15 +3624,15 @@
 	}
 
 	.swap-time {
-		color: #888;
+		color: var(--text-secondary);
 	}
 
 	.swap-room {
-		color: #666;
+		color: var(--text-muted);
 	}
 
 	.swap-conflict {
-		color: #777;
+		color: var(--text-muted);
 		font-style: italic;
 	}
 
@@ -3634,9 +3641,9 @@
 		width: 100%;
 		padding: 0.55rem 0.7rem;
 		background: var(--bg-card);
-		border: 1px solid #222;
+		border: 1px solid var(--border);
 		border-radius: 6px;
-		color: #fff;
+		color: var(--text);
 		font-size: 0.85rem;
 	}
 
@@ -3647,24 +3654,24 @@
 	}
 	.input:focus {
 		outline: none;
-		border-color: #333;
+		border-color: var(--border-hover);
 	}
 	.input::placeholder {
-		color: #444;
+		color: var(--text-muted);
 	}
 
 	.input.error {
-		border-color: #ff4444;
+		border-color: var(--bad);
 	}
 
 	.input.valid {
-		border-color: #44aa44;
+		border-color: var(--ok);
 		border-style: dashed;
 		background: rgba(68, 170, 68, 0.05);
 	}
 
 	.error-msg {
-		color: #ff4444;
+		color: var(--bad);
 		font-size: 0.8rem;
 		margin-top: 0.5rem;
 		margin-bottom: 0.5rem;
@@ -3673,28 +3680,28 @@
 
 	.btn {
 		padding: 0.5rem 0.7rem;
-		background: #111;
-		border: 1px solid #222;
+		background: var(--bg-sunken);
+		border: 1px solid var(--border);
 		border-radius: 5px;
-		color: #fff;
+		color: var(--text);
 		font-size: 0.8rem;
 		cursor: pointer;
 	}
 	.btn:hover {
-		background: #1a1a1a;
-		border-color: #333;
+		background: var(--bg-card);
+		border-color: var(--border-hover);
 	}
 	.btn:disabled {
 		opacity: 0.4;
 		cursor: not-allowed;
 	}
 	.btn.primary {
-		background: #fff;
-		color: #000;
-		border-color: #fff;
+		background: var(--accent);
+		color: var(--accent-ink);
+		border-color: var(--accent);
 	}
 	.btn.primary:hover {
-		background: #ddd;
+		background: var(--accent-hover);
 	}
 	.btn.small {
 		padding: 0.3rem 0.5rem;
@@ -3702,14 +3709,14 @@
 	}
 
 	.btn.secondary {
-		background: #1a1a1a;
-		border: 1px solid #333;
-		color: #eee;
+		background: var(--bg-card);
+		border: 1px solid var(--border-hover);
+		color: var(--text);
 		transition: all 0.2s;
 	}
 	.btn.secondary:hover {
-		background: #252525;
-		border-color: #555;
+		background: var(--bg-hover);
+		border-color: var(--border-strong);
 		transform: translateY(-1px);
 	}
 
@@ -3731,7 +3738,7 @@
 	.icon {
 		display: flex;
 		align-items: center;
-		color: #999;
+		color: var(--text-secondary);
 	}
 
 	.icon svg {
@@ -3745,7 +3752,7 @@
 		align-items: center;
 		justify-content: center;
 		background: rgba(255, 255, 255, 0.03);
-		color: #555;
+		color: var(--text-muted);
 		border: 1px solid transparent;
 		border-radius: 50%;
 		cursor: pointer;
@@ -3757,16 +3764,16 @@
 	}
 
 	.remove-btn:hover {
-		background: #1a0a0a;
-		color: #ff4444;
-		border-color: #331111;
+		background: color-mix(in srgb, var(--bad) 8%, var(--bg-card));
+		color: var(--bad);
+		border-color: color-mix(in srgb, var(--bad) 25%, var(--border));
 		transform: scale(1.1);
 	}
 
 	.hidden-courses {
 		margin-top: 2.5rem;
 		padding-top: 1.5rem;
-		border-top: 1px dashed #222;
+		border-top: 1px dashed var(--border);
 		opacity: 0.6;
 		transition: opacity 0.2s;
 	}
@@ -3780,7 +3787,7 @@
 		font-size: 0.75rem;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: #444;
+		color: var(--text-muted);
 		font-weight: 600;
 	}
 
@@ -3795,22 +3802,22 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 0.6rem 0.9rem;
-		background: #050505;
-		border: 1px solid #151515;
+		background: var(--bg);
+		border: 1px solid var(--border);
 		border-radius: 6px;
 		font-size: 0.8rem;
-		color: #666;
+		color: var(--text-muted);
 		transition: border-color 0.2s;
 	}
 
 	.hidden-item:hover {
-		border-color: #333;
+		border-color: var(--border-hover);
 	}
 
 	.restore-btn {
-		background: #111;
-		border: 1px solid #222;
-		color: #888;
+		background: var(--bg-sunken);
+		border: 1px solid var(--border);
+		color: var(--text-secondary);
 		padding: 0.3rem 0.7rem;
 		border-radius: 4px;
 		font-size: 0.7rem;
@@ -3820,9 +3827,9 @@
 	}
 
 	.restore-btn:hover {
-		background: #eee;
-		color: #000;
-		border-color: #fff;
+		background: var(--accent-hover);
+		color: var(--accent-ink);
+		border-color: var(--accent);
 	}
 
 	.batch-input-row {
@@ -3838,8 +3845,8 @@
 
 	.add-batch-btn {
 		background: none;
-		border: 1px dashed #333;
-		color: #888;
+		border: 1px dashed var(--border-hover);
+		color: var(--text-secondary);
 		padding: 0.5rem;
 		border-radius: 6px;
 		cursor: pointer;
@@ -3847,15 +3854,15 @@
 		transition: all 0.2s;
 	}
 	.add-batch-btn:hover {
-		background: #111;
-		color: #fff;
-		border-color: #555;
+		background: var(--bg-sunken);
+		color: var(--text);
+		border-color: var(--border-strong);
 	}
 
 	.remove-batch-btn {
-		background: #111;
-		border: 1px solid #222;
-		color: #666;
+		background: var(--bg-sunken);
+		border: 1px solid var(--border);
+		color: var(--text-muted);
 		width: 38px; /* Match input height roughly */
 		height: 38px;
 		border-radius: 6px;
@@ -3867,8 +3874,8 @@
 		flex-shrink: 0;
 	}
 	.remove-batch-btn:hover {
-		background: #222;
-		color: #ff4444;
+		background: var(--bg-hover);
+		color: var(--bad);
 	}
 
 	.tags-row {
@@ -3884,7 +3891,7 @@
 		left: 0;
 		right: 0;
 		bottom: 0;
-		background: rgba(0, 0, 0, 0.8);
+		background: rgba(26, 24, 21, 0.45);
 		display: flex;
 		justify-content: center;
 		align-items: center;
@@ -3894,35 +3901,35 @@
 	}
 
 	.modal {
-		background: #111;
-		border: 1px solid #333;
+		background: var(--bg-sunken);
+		border: 1px solid var(--border-hover);
 		padding: 2rem;
 		border-radius: 12px;
 		max-width: 400px;
 		width: 90%;
 		text-align: center;
-		box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+		box-shadow: var(--shadow-lift);
 		animation: scaleIn 0.2s ease-out;
 	}
 
 	.modal h2 {
 		margin-top: 0;
-		color: #fff;
+		color: var(--text);
 		margin-bottom: 1rem;
 	}
 
 	.modal p {
-		color: #ccc;
+		color: var(--text-secondary);
 		margin-bottom: 1rem;
 		line-height: 1.5;
 	}
 
 	.modal .instruction {
-		background: #1a1a1a;
+		background: var(--bg-card);
 		padding: 1rem;
 		border-radius: 8px;
 		font-size: 0.9rem;
-		border: 1px dashed #444;
+		border: 1px dashed var(--border-hover);
 		margin-bottom: 1.5rem;
 	}
 
@@ -4025,13 +4032,13 @@
 	/* Batch Tip */
 	.batch-tip {
 		background: rgba(255, 255, 255, 0.05);
-		border-left: 2px solid #aaa;
+		border-left: 2px solid var(--border-strong);
 		padding: 0.75rem 1rem;
 		border-radius: 0 6px 6px 0;
 		margin: 1rem 0;
 		font-size: 0.85rem;
 		line-height: 1.5;
-		color: #ccc;
+		color: var(--text-secondary);
 		text-align: left;
 		display: flex;
 		gap: 0.75rem;
@@ -4045,7 +4052,7 @@
 	}
 
 	.batch-tip strong {
-		color: #fff;
+		color: var(--text);
 		font-weight: 500;
 	}
 
@@ -4067,7 +4074,7 @@
 		right: 0.75rem;
 		background: none;
 		border: none;
-		color: #666;
+		color: var(--text-muted);
 		font-size: 1.5rem;
 		cursor: pointer;
 		padding: 0.25rem 0.5rem;
@@ -4077,8 +4084,8 @@
 	}
 
 	.modal-close:hover {
-		color: #fff;
-		background: #222;
+		color: var(--text);
+		background: var(--bg-hover);
 	}
 
 	/* Course Details Modal */
@@ -4103,11 +4110,11 @@
 	}
 
 	.course-modal-name {
-		color: #888;
+		color: var(--text-secondary);
 		font-size: 1rem;
 		margin-bottom: 1.5rem;
 		padding-bottom: 1rem;
-		border-bottom: 1px solid #222;
+		border-bottom: 1px solid var(--border);
 	}
 
 	.course-modal-grid {
@@ -4131,9 +4138,9 @@
 
 	.legend-edit {
 		background: none;
-		border: 1px solid #333;
+		border: 1px solid var(--border-hover);
 		border-radius: 999px;
-		color: #999;
+		color: var(--text-secondary);
 		font-size: 0.65rem;
 		padding: 0.15rem 0.5rem;
 		cursor: pointer;
@@ -4141,8 +4148,8 @@
 	}
 
 	.legend-edit:hover {
-		border-color: #555;
-		color: #fff;
+		border-color: var(--border-strong);
+		color: var(--text);
 	}
 
 	.colour-item {
@@ -4150,7 +4157,7 @@
 		align-items: center;
 		gap: 0.75rem;
 		padding: 0.6rem 0.75rem;
-		background: #1a1a1a;
+		background: var(--bg-card);
 		border-radius: 6px;
 	}
 
@@ -4176,14 +4183,14 @@
 		width: 26px;
 		height: 26px;
 		border-radius: 6px;
-		border: 1px solid #333;
+		border: 1px solid var(--border-hover);
 		flex: none;
 		cursor: pointer;
 		transition: border-color 0.15s;
 	}
 
 	.colour-swatch:hover {
-		border-color: #777;
+		border-color: var(--border-strong);
 	}
 
 	.colour-swatch input {
@@ -4215,13 +4222,13 @@
 		font-size: 0.7rem;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: #555;
+		color: var(--text-muted);
 		font-weight: 500;
 	}
 
 	.modal-value {
 		font-size: 0.9rem;
-		color: #eee;
+		color: var(--text);
 	}
 
 	/* Keyboard Shortcuts Modal */
@@ -4250,18 +4257,18 @@
 	}
 
 	.shortcut-item span {
-		color: #888;
+		color: var(--text-secondary);
 	}
 
 	kbd {
 		display: inline-block;
 		padding: 0.25rem 0.5rem;
-		background: #1a1a1a;
-		border: 1px solid #333;
+		background: var(--bg-card);
+		border: 1px solid var(--border-hover);
 		border-radius: 4px;
 		font-family: "SF Mono", monospace;
 		font-size: 0.75rem;
-		color: #fff;
+		color: var(--text);
 		min-width: 1.5rem;
 		text-align: center;
 	}
@@ -4293,8 +4300,8 @@
 		justify-content: space-between;
 		align-items: flex-start;
 		padding: 0.75rem;
-		background: color-mix(in srgb, var(--accent, #1a1a1a) 7%, #1a1a1a);
-		border-left: 2px solid var(--accent, #2a2a2a);
+		background: color-mix(in srgb, var(--tint, var(--accent)) 12%, var(--bg-card));
+		border-left: 3px solid var(--tint, var(--accent));
 		border-radius: 6px;
 		gap: 1rem;
 	}
@@ -4327,7 +4334,7 @@
 
 	.info-hint {
 		font-size: 0.75rem;
-		color: #888;
+		color: var(--text-secondary);
 		opacity: 0.5;
 		transition: opacity 0.15s;
 		margin-left: 0.35rem;
@@ -4342,15 +4349,15 @@
 	.comp-badge {
 		font-size: 0.7rem;
 		padding: 0.15rem 0.4rem;
-		background: #333;
-		color: #aaa;
+		background: var(--bg-hover);
+		color: var(--text-secondary);
 		border-radius: 3px;
 		text-transform: uppercase;
 	}
 
 	.course-list-name {
 		font-size: 0.85rem;
-		color: #ccc;
+		color: var(--text-secondary);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -4381,7 +4388,7 @@
 		gap: 0.9rem;
 		padding: 0.7rem 0.2rem 0;
 		font-size: 0.7rem;
-		color: #888;
+		color: var(--text-secondary);
 	}
 
 	.legend-item {
@@ -4402,18 +4409,18 @@
 		gap: 0.2rem;
 		align-items: flex-start;
 		padding: 0.6rem 0.7rem;
-		background: color-mix(in srgb, var(--accent, #1a1a1a) 8%, #1a1a1a);
-		border: 1px solid #333;
-		border-left: 2px solid var(--accent, #333);
+		background: color-mix(in srgb, var(--tint, var(--accent)) 10%, var(--bg-card));
+		border: 1px solid var(--border-hover);
+		border-left: 3px solid var(--tint, var(--accent));
 		border-radius: 6px;
-		color: #ddd;
+		color: var(--text);
 		cursor: pointer;
 		transition: all 0.15s;
 	}
 
 	.dept-card:hover {
-		border-color: #666;
-		background: #222;
+		border-color: var(--border-strong);
+		background: var(--bg-hover);
 	}
 
 	.dept-code {
@@ -4427,21 +4434,21 @@
 		width: 8px;
 		height: 8px;
 		border-radius: 50%;
-		background: var(--accent, #555);
+		background: var(--tint, var(--accent));
 		flex: none;
 	}
 
 	.dept-back {
 		background: none;
 		border: none;
-		color: #888;
+		color: var(--text-secondary);
 		font-size: 1.1rem;
 		cursor: pointer;
 		padding: 0 0.4rem 0 0;
 	}
 
 	.dept-back:hover {
-		color: #fff;
+		color: var(--text);
 	}
 
 	.dept-filter {
@@ -4454,16 +4461,16 @@
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		padding: 0.1rem 0.35rem;
-		border: 1px solid #333;
+		border: 1px solid var(--border-hover);
 		border-radius: 3px;
-		color: #888;
+		color: var(--text-secondary);
 		white-space: nowrap;
 	}
 
 	/* Your own programme's elective, as opposed to one you'd take as a UWE */
 	.elective-badge.mine {
-		border-color: #22c55e55;
-		color: #22c55e;
+		border-color: color-mix(in srgb, var(--ok) 40%, transparent);
+		color: var(--ok);
 	}
 
 	.batch-line {
@@ -4496,10 +4503,10 @@
 		align-items: center;
 		gap: 0.3rem;
 		padding: 0.28rem 0.7rem;
-		border: 1px solid #3d3d3d;
+		border: 1px solid var(--border-hover);
 		border-radius: 999px;
-		background: #1e1e1e;
-		color: #ddd;
+		background: var(--bg-card);
+		color: var(--text);
 		font-size: 0.72rem;
 		/* Same weight checked or not, so the pill never resizes on click */
 		font-weight: 600;
@@ -4513,9 +4520,9 @@
 	}
 
 	.chip:hover {
-		border-color: #5a5a5a;
-		background: #262626;
-		color: #fff;
+		border-color: var(--border-strong);
+		background: var(--bg-hover);
+		color: var(--text);
 	}
 
 	.chip:active {
@@ -4537,9 +4544,9 @@
 	}
 
 	.chip:has(input:checked) {
-		background: #fff;
-		border-color: #fff;
-		color: #000;
+		background: var(--accent);
+		border-color: var(--accent);
+		color: var(--accent-ink);
 	}
 
 	.chip:has(input:checked) span::before {
@@ -4548,7 +4555,7 @@
 	}
 
 	.chip:has(input:focus-visible) {
-		outline: 2px solid #4a9eff;
+		outline: 2px solid var(--accent);
 		outline-offset: 2px;
 	}
 
@@ -4566,14 +4573,14 @@
 		flex-direction: column;
 		gap: 0.15rem;
 		padding: 0.4rem 0.5rem;
-		border: 1px solid #222;
-		border-left: 3px solid #333;
+		border: 1px solid var(--border);
+		border-left: 3px solid var(--border-hover);
 		border-radius: 4px;
 	}
 
 	/* The section you actually have */
 	.section-row.mine {
-		border-left-color: #22c55e;
+		border-left-color: var(--ok);
 		background: rgba(34, 197, 94, 0.07);
 	}
 
@@ -4589,10 +4596,10 @@
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		padding: 0.1rem 0.35rem;
-		border: 1px solid #ef4444;
+		border: 1px solid var(--bad);
 		border-radius: 3px;
-		background: #ef444422;
-		color: #ef4444;
+		background: color-mix(in srgb, var(--bad) 13%, var(--bg-card));
+		color: var(--bad);
 		font-weight: 700;
 		white-space: nowrap;
 	}
@@ -4600,10 +4607,10 @@
 	.planner-not-uwe {
 		margin: 0 0 0.75rem;
 		padding: 0.5rem 0.6rem;
-		border: 1px solid #ef4444;
+		border: 1px solid var(--bad);
 		border-radius: 4px;
-		background: #ef444418;
-		color: #ef4444;
+		background: color-mix(in srgb, var(--bad) 9%, var(--bg-card));
+		color: var(--bad);
 		font-size: 0.75rem;
 		font-weight: 600;
 	}
@@ -4611,11 +4618,11 @@
 	/* Whole-course planner */
 	.fit-note {
 		font-size: 0.7rem;
-		color: #22c55e;
+		color: var(--ok);
 	}
 
 	.fit-note.bad {
-		color: #f59e0b;
+		color: var(--warn);
 	}
 
 	.planner-overlay {
@@ -4635,7 +4642,7 @@
 	}
 
 	.planner-name {
-		color: #aaa;
+		color: var(--text-secondary);
 		font-size: 0.9rem;
 		margin-bottom: 1rem;
 	}
@@ -4645,13 +4652,13 @@
 		border-radius: 6px;
 		font-size: 0.85rem;
 		background: rgba(34, 197, 94, 0.12);
-		color: #22c55e;
+		color: var(--ok);
 		margin-bottom: 1rem;
 	}
 
 	.planner-status.bad {
 		background: rgba(245, 158, 11, 0.12);
-		color: #f59e0b;
+		color: var(--warn);
 	}
 
 	.planner-groups {
@@ -4666,7 +4673,7 @@
 		font-size: 0.8rem;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
-		color: #888;
+		color: var(--text-secondary);
 		margin-bottom: 0.5rem;
 		display: flex;
 		gap: 0.5rem;
@@ -4681,21 +4688,21 @@
 		text-align: left;
 		padding: 0.6rem 0.75rem;
 		margin-bottom: 0.4rem;
-		background: #1a1a1a;
-		border: 1px solid #333;
+		background: var(--bg-card);
+		border: 1px solid var(--border-hover);
 		border-radius: 6px;
-		color: #ddd;
+		color: var(--text);
 		cursor: pointer;
 		transition: all 0.15s;
 	}
 
 	.planner-option:hover:not(:disabled) {
-		border-color: #666;
+		border-color: var(--border-strong);
 	}
 
 	.planner-option.picked {
-		border-color: #fff;
-		background: #222;
+		border-color: var(--accent);
+		background: var(--bg-hover);
 	}
 
 	.planner-option.has-conflict {
@@ -4721,24 +4728,24 @@
 		padding: 0.15rem 0.45rem;
 		font-size: 0.68rem;
 		border-radius: 4px;
-		background: #333;
-		color: #aaa;
+		background: var(--bg-hover);
+		color: var(--text-secondary);
 	}
 
 	.section-row .badge.ok,
 	.planner-option .badge.ok {
 		background: rgba(34, 197, 94, 0.18);
-		color: #22c55e;
+		color: var(--ok);
 	}
 
 	.planner-option .badge.warning {
 		background: rgba(245, 158, 11, 0.2);
-		color: #f59e0b;
+		color: var(--warn);
 	}
 
 	.planner-conflict {
 		font-size: 0.72rem;
-		color: #f59e0b;
+		color: var(--warn);
 	}
 
 	.planner-actions {

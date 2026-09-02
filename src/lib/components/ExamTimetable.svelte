@@ -135,7 +135,13 @@
 		if (!node) return;
 
 		try {
-			const dataUrl = await toPng(node, { backgroundColor: "#08080a" });
+			// Read the paper colour off the theme rather than restating it — an
+			// exported image with a stale background is dark text on dark.
+			const paper =
+				getComputedStyle(document.documentElement)
+					.getPropertyValue("--bg-card")
+					.trim() || "#ffffff";
+			const dataUrl = await toPng(node, { backgroundColor: paper });
 			const link = document.createElement("a");
 			link.href = dataUrl;
 			link.download = "midsem-exams.png";
@@ -524,7 +530,7 @@
 		display: flex;
 		flex-direction: column;
 		background: var(--bg);
-		color: #fff;
+		color: var(--text);
 		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 		min-height: 100vh;
 	}
@@ -541,7 +547,7 @@
 	}
 
 	.muted {
-		color: #666;
+		color: var(--text-muted);
 	}
 
 	.small {
@@ -566,7 +572,7 @@
 		align-items: center;
 		gap: 1.5rem;
 		padding: 1rem 1.5rem;
-		border-bottom: 1px solid #222;
+		border-bottom: 1px solid var(--border);
 		flex-wrap: wrap;
 	}
 
@@ -584,9 +590,9 @@
 	.tag {
 		font-size: 0.7rem;
 		padding: 4px 8px;
-		background: #222;
+		background: var(--bg-hover);
 		border-radius: 4px;
-		color: #888;
+		color: var(--text-secondary);
 	}
 
 	.search-wrap {
@@ -601,8 +607,8 @@
 		top: 100%;
 		left: 0;
 		right: 0;
-		background: #111;
-		border: 1px solid #333;
+		background: var(--bg-sunken);
+		border: 1px solid var(--border-hover);
 		border-radius: 8px;
 		max-height: 300px;
 		overflow-y: auto;
@@ -614,7 +620,7 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 0.75rem 1rem;
-		border-bottom: 1px solid #222;
+		border-bottom: 1px solid var(--border);
 		gap: 1rem;
 	}
 
@@ -640,7 +646,7 @@
 
 	.conflict-note {
 		font-size: 0.7rem;
-		color: #f59e0b;
+		color: var(--warn);
 	}
 
 	.header-actions {
@@ -657,7 +663,7 @@
 	.calendar-scroll-wrapper {
 		overflow-x: auto;
 		background: var(--bg);
-		border: 1px solid #222;
+		border: 1px solid var(--border);
 		border-radius: 8px;
 		padding: 1rem;
 	}
@@ -670,7 +676,7 @@
 		display: grid;
 		grid-template-columns: 80px repeat(var(--days), minmax(120px, 1fr));
 		gap: 1px;
-		background: #222;
+		background: var(--bg-hover);
 		border-radius: 8px;
 		overflow: hidden;
 	}
@@ -680,12 +686,12 @@
 	}
 
 	.day-header {
-		background: #111;
+		background: var(--bg-sunken);
 		padding: 0.75rem;
 		text-align: center;
 		font-weight: 600;
 		font-size: 0.85rem;
-		border-left: 1px solid #222;
+		border-left: 1px solid var(--border);
 		display: flex;
 		flex-direction: column;
 		gap: 0.25rem;
@@ -698,7 +704,7 @@
 
 	.day-name {
 		font-size: 0.7rem;
-		color: #888;
+		color: var(--text-secondary);
 		font-weight: 400;
 	}
 
@@ -707,13 +713,13 @@
 	}
 
 	.exam-slot.empty-slot {
-		background: #050505;
+		background: var(--bg);
 	}
 
 	.exam-slot.gap-slot {
 		min-height: 24px;
 		background: var(--bg-input);
-		border-top: 1px dashed #1a1a1a;
+		border-top: 1px dashed var(--border);
 	}
 
 	.slot-label {
@@ -721,26 +727,26 @@
 		padding: 1rem 0.5rem;
 		text-align: right;
 		font-size: 0.75rem;
-		color: #666;
+		color: var(--text-muted);
 		display: flex;
 		align-items: center;
 		justify-content: flex-end;
 	}
 
 	.slot-label.exam-time {
-		color: #888;
+		color: var(--text-secondary);
 		font-weight: 500;
 	}
 
 	.slot-label:not(.exam-time) {
 		padding: 0.25rem 0.5rem;
 		font-size: 0.65rem;
-		color: #444;
+		color: var(--text-muted);
 	}
 
 	.exam-slot {
 		background: var(--bg-card);
-		border-left: 1px solid #222;
+		border-left: 1px solid var(--border);
 		padding: 0.25rem;
 		min-height: 100px;
 		display: flex;
@@ -749,8 +755,8 @@
 	}
 
 	.exam-block {
-		background: #111;
-		border: 1px solid #444;
+		background: var(--bg-sunken);
+		border: 1px solid var(--border-hover);
 		border-radius: 4px;
 		padding: 0.75rem;
 		cursor: pointer;
@@ -763,8 +769,8 @@
 	}
 
 	.exam-block:hover {
-		background: #1a1a1a;
-		border-color: #666;
+		background: var(--bg-card);
+		border-color: var(--border-strong);
 	}
 
 	.block-code {
@@ -799,8 +805,8 @@
 	}
 
 	.list-item {
-		background: #111;
-		border: 1px solid #222;
+		background: var(--bg-sunken);
+		border: 1px solid var(--border);
 		border-radius: 8px;
 		padding: 0.75rem;
 	}
@@ -823,7 +829,7 @@
 		border-radius: 50%;
 		border: none;
 		background: transparent;
-		color: #666;
+		color: var(--text-muted);
 		font-size: 1rem;
 		cursor: pointer;
 		display: flex;
@@ -832,36 +838,36 @@
 	}
 
 	.remove-btn:hover {
-		background: #2a0a0a;
-		color: #ff6b6b;
+		background: color-mix(in srgb, var(--bad) 12%, var(--bg-card));
+		color: var(--bad);
 	}
 
 	/* Inputs */
 	.input {
 		width: 100%;
 		padding: 0.6rem 0.9rem;
-		background: #111;
-		border: 1px solid #333;
+		background: var(--bg-sunken);
+		border: 1px solid var(--border-hover);
 		border-radius: 6px;
-		color: #fff;
+		color: var(--text);
 		font-size: 0.9rem;
 	}
 
 	.input:focus {
 		outline: none;
-		border-color: #555;
+		border-color: var(--border-strong);
 	}
 
 	.input::placeholder {
-		color: #555;
+		color: var(--text-muted);
 	}
 
 	.btn {
 		padding: 0.5rem 1rem;
-		background: #222;
-		border: 1px solid #333;
+		background: var(--bg-hover);
+		border: 1px solid var(--border-hover);
 		border-radius: 6px;
-		color: #fff;
+		color: var(--text);
 		font-size: 0.85rem;
 		cursor: pointer;
 		text-decoration: none;
@@ -871,8 +877,8 @@
 	}
 
 	.btn:hover {
-		background: #333;
-		border-color: #444;
+		background: var(--bg-hover);
+		border-color: var(--border-hover);
 	}
 
 	.btn:disabled {
@@ -881,12 +887,13 @@
 	}
 
 	.btn.primary {
-		background: #2563eb;
-		border-color: #3b82f6;
+		background: var(--accent);
+		border-color: var(--accent);
+		color: var(--accent-ink);
 	}
 
 	.btn.primary:hover {
-		background: #3b82f6;
+		background: var(--accent);
 	}
 
 	.btn.small {
@@ -896,14 +903,14 @@
 
 	.btn.secondary {
 		background: transparent;
-		border: 1px solid #333;
-		color: #888;
+		border: 1px solid var(--border-hover);
+		color: var(--text-secondary);
 	}
 
 	.btn.secondary:hover {
-		background: #111;
-		border-color: #444;
-		color: #fff;
+		background: var(--bg-sunken);
+		border-color: var(--border-hover);
+		color: var(--text);
 	}
 
 	.action-btn {

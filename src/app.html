@@ -14,6 +14,15 @@
 
 		gtag('config', 'G-TNKV3Z810Z');
 	</script>
+	<script>
+		// Before first paint, so a dark reader never gets a white flash.
+		// No saved choice means follow the system, which the CSS does on its own.
+		try {
+			var t = localStorage.getItem('scooby:theme');
+			if (t === 'dark' || t === 'light')
+				document.documentElement.setAttribute('data-theme', t);
+		} catch (e) {}
+	</script>
 	%sveltekit.head%
 </head>
 

@@ -243,12 +243,14 @@
 	/* One muted hue per legend entry. Every coloured thing on the page — the
 	   timeline dots, the kind labels, the grid cells, the hero's edge — reads
 	   the same --cat, so a kind of day looks the same wherever it turns up. */
-	.exam { --cat: #9c8cd4; }
-	.deadline { --cat: #c9a961; }
-	.holiday { --cat: #cf7f83; }
-	.break { --cat: #7fb59a; }
-	.event { --cat: #8296b5; }
-	.holiday.restricted { --cat: #b98db2; }
+	/* The hues live in app.css so each theme can pitch them for its ground —
+	   --cat is used as text as well as fill. */
+	.exam { --cat: var(--cat-exam); }
+	.deadline { --cat: var(--cat-deadline); }
+	.holiday { --cat: var(--cat-holiday); }
+	.break { --cat: var(--cat-break); }
+	.event { --cat: var(--cat-event); }
+	.holiday.restricted { --cat: var(--cat-restricted); }
 
 	.page {
 		max-width: 1040px;

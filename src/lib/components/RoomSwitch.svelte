@@ -825,7 +825,7 @@
 		font-size: 0.9rem;
 	}
 	.err {
-		color: #ff6b6b;
+		color: var(--bad);
 		font-size: 0.85rem;
 	}
 	.notice {

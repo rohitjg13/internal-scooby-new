@@ -337,67 +337,57 @@
 
 <main class="dash">
 	<header class="head">
-		<p class="label">{dateLine}</p>
-		<h1>Scooby</h1>
+		<div class="head-text">
+			<p class="label">{dateLine}</p>
+			<h1>Scooby</h1>
+		</div>
 	</header>
 
-	<!-- Today -->
-	<section class="panel today" aria-label="Today">
-		<div class="panel-head">
-			<span class="label">Today</span>
-			{#if todays.length}
-				<span class="count">{done}/{todays.length} done</span>
+	<!-- Today, as one panel: what is next, and the shape of the rest of it. -->
+	<section class="today" aria-label="Today">
+		<div class="up-next">
+			<span class="label on-accent">Up next</span>
+
+			{#if !planLoaded}
+				<p class="big-quiet">Reading your timetable…</p>
+			{:else if !hasPlan}
+				<p class="big-quiet">No timetable saved yet.</p>
+				<a class="hero-cta" href="/collision-checker">Build one →</a>
+			{:else if !today}
+				<p class="big-quiet">Sunday — nothing timetabled.</p>
+			{:else if !todays.length}
+				<p class="big-quiet">No classes today.</p>
+			{:else if next}
+				<a class="next-link" href="/collision-checker">
+					<span class="next-time">{minutesToTime(next.start)}</span>
+					<span class="next-until">{untilLabel(next)}</span>
+					<span class="next-name">{next.courseName}</span>
+					<span class="next-meta">{next.courseCode} · {next.room || "Room TBA"}</span>
+				</a>
+			{:else}
+				<p class="big-quiet">That's today done.</p>
 			{/if}
 		</div>
 
-		{#if !planLoaded}
-			<p class="quiet">Reading your timetable…</p>
-		{:else if !hasPlan}
-			<div class="empty">
-				<p>No timetable saved yet.</p>
-				<a class="btn btn-primary btn-sm" href="/collision-checker">Build one</a>
-			</div>
-		{:else if !today}
-			<p class="quiet">Sunday. Nothing timetabled.</p>
-		{:else if !todays.length}
-			<p class="quiet">No classes today.</p>
-		{:else if next}
-			<a class="next" href="/collision-checker">
-				<span class="next-when">
-					<span class="next-time">{minutesToTime(next.start)}</span>
-					<span class="next-until">{untilLabel(next)}</span>
-				</span>
-				<span class="next-body">
-					<span class="next-code">{next.courseCode}</span>
-					<span class="next-name">{next.courseName}</span>
-					<span class="next-meta">
-						{next.room || "Room TBA"}{next.faculty ? ` · ${next.faculty}` : ""}
-					</span>
-				</span>
-			</a>
-
-			{#if todays.length > 1}
-				<ul class="rest">
-					{#each todays as c}
-						<li class:past={c.end <= mins} class:current={c === next}>
-							<span class="mono">{minutesToTime(c.start)}</span>
-							<span class="rest-code">{c.courseCode}</span>
-							<span class="rest-name">{c.courseName}</span>
-							<span class="rest-room mono">{c.room || "—"}</span>
-						</li>
-					{/each}
-				</ul>
-			{/if}
-		{:else}
-			<p class="quiet">That's all of today's classes done.</p>
+		{#if todays.length}
+			<ol class="timeline" aria-label="Today's classes">
+				{#each todays as c}
+					<li class:past={c.end <= mins} class:current={c === next}>
+						<span class="dot"></span>
+						<span class="tl-time">{minutesToTime(c.start)}</span>
+						<span class="tl-name">{c.courseName}</span>
+						<span class="tl-room">{c.room || "—"}</span>
+					</li>
+				{/each}
+			</ol>
 		{/if}
 	</section>
 
 	<!-- Widgets -->
 	<section aria-label="Widgets">
-		<div class="panel-head widgets-head">
-			<span class="label">Widgets</span>
-			<button class="add" onclick={() => (picking = !picking)} aria-expanded={picking}>
+		<div class="band">
+			<span class="label">Your numbers</span>
+			<button class="edit" onclick={() => (picking = !picking)} aria-expanded={picking}>
 				{picking ? "Done" : "Edit"}
 			</button>
 		</div>
@@ -418,10 +408,10 @@
 		{/if}
 
 		{#if widgets.length}
-			<div class="widgets">
+			<div class="cards">
 				{#each widgets as id (id)}
 					{#if id === "gpa"}
-						<a class="panel widget" href="/gpa">
+						<a class="card" href="/gpa">
 							<span class="label">CGPA</span>
 							{#if gpa}
 								<span class="stat">{gpa.cgpa.toFixed(2)}</span>
@@ -432,21 +422,29 @@
 							{/if}
 						</a>
 					{:else if id === "attendance"}
-						<a class="panel widget wide" href="/attendance-calculator">
+						<a class="card span2" href="/attendance-calculator">
 							<span class="label">Attendance</span>
 							{#if att}
 								<ul class="att">
 									{#each att.courses as c}
 										<li>
 											<span class="att-name">{c.name}</span>
+											<span class="att-track">
+												<span
+													class="att-fill"
+													style:width="{Math.min(100, c.pct ?? 0)}%"
+													style:background={c.pct !== null && c.pct >= att.target
+														? "var(--ok)"
+														: "var(--bad)"}
+												></span>
+											</span>
 											{#if c.pct === null}
 												<span class="att-pct dim">—</span>
 											{:else}
 												<span
 													class="att-pct"
-													style:color={c.pct >= att.target
-														? "var(--ok)"
-														: "var(--bad)"}>{c.pct.toFixed(0)}%</span
+													style:color={c.pct >= att.target ? "var(--ok)" : "var(--bad)"}
+													>{c.pct.toFixed(0)}%</span
 												>
 											{/if}
 										</li>
@@ -463,39 +461,28 @@
 							{/if}
 						</a>
 					{:else if id === "semester"}
-						<a class="panel widget" href="/academic-calendar">
+						<a class="card" href="/academic-calendar">
 							<span class="label">Semester</span>
 							<span class="stat">{semLeft.rem}<span class="unit">days</span></span>
 							<span class="sub">of teaching left</span>
-							<span class="bar"
-								><span style:width="{semLeft.pct}%"></span></span
-							>
+							<span class="bar"><span style:width="{semLeft.pct}%"></span></span>
 						</a>
 					{:else if minorById(id)}
 						{@const m = minorById(id)!}
-						<a class="panel widget" href={m.href}>
+						<a class="card" href={m.href}>
 							<span class="label">{m.name}</span>
+							<span class="stat">{m.done}<span class="unit">/ {m.goal || "—"} cr</span></span>
 							{#if m.goal}
-								<span class="stat"
-									>{m.done}<span class="unit">/ {m.goal} cr</span></span
-								>
 								<span class="sub">
 									{m.left} to go{m.doing ? `, ${m.doing} in progress` : ""}
 								</span>
 								<span class="bar">
-									<span
-										class="bar-done"
-										style:width="{(m.done / m.goal) * 100}%"
-									></span>
-									<span
-										class="bar-doing"
-										style:width="{(m.doing / m.goal) * 100}%"
-									></span>
+									<span class="bar-done" style:width="{(m.done / m.goal) * 100}%"></span>
+									<span class="bar-doing" style:width="{(m.doing / m.goal) * 100}%"></span>
 								</span>
 							{:else}
-								<!-- A minor whose document lists no parseable courses: name
-								     it, but don't invent a number for it. -->
-								<span class="stat dim">—</span>
+								<!-- A minor whose document lists no parseable courses: name it,
+								     but don't invent a number for it. -->
 								<span class="sub">nothing to tick off yet</span>
 							{/if}
 						</a>
@@ -509,59 +496,34 @@
 
 	<!-- Everything else -->
 	<section aria-label="All tools">
-		<div class="panel-head"><span class="label">Everything else</span></div>
-		<div class="index">
+		<div class="band"><span class="label">Everything else</span></div>
+		<div class="pages">
 			{#each features as f}
-				<a class="row" href={f.href}>
-					<span class="row-icon">{@render icon(f.icon)}</span>
-					<span class="row-body">
-						<span class="row-title">{f.title}</span>
-						<span class="row-blurb">{f.blurb}</span>
+				<a class="page" href={f.href}>
+					<span class="page-icon">{@render icon(f.icon)}</span>
+					<span class="page-body">
+						<span class="page-title">{f.title}</span>
+						<span class="page-blurb">{f.blurb}</span>
 					</span>
-					<span class="row-tag mono">{f.tag}</span>
-					<svg
-						class="row-arrow"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.5"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						aria-hidden="true"
-					>
-						<path d="M9 6l6 6-6 6" />
-					</svg>
 				</a>
 			{/each}
-
-			<a
-				class="row"
-				href="https://maps.rohitjg.com"
-				target="_blank"
-				rel="noopener noreferrer"
-			>
-				<span class="row-icon">{@render icon("map")}</span>
-				<span class="row-body">
-					<span class="row-title">Snoopy</span>
-					<span class="row-blurb">
-						The campus map — every block, mess and court pinned.
-					</span>
-				</span>
-				<span class="row-tag mono">Campus</span>
-				<svg
-					class="row-arrow"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="1.5"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					aria-hidden="true"
-				>
-					<path d="M7 17 17 7M9 7h8v8" />
-				</svg>
-			</a>
 		</div>
+
+		<!-- Snoopy is a different product, not one of Scooby's pages, so it
+		     gets its own quiet line rather than a tile competing with them. -->
+		<a
+			class="offsite"
+			href="https://maps.rohitjg.com"
+			target="_blank"
+			rel="noopener noreferrer"
+		>
+			<span class="offsite-icon">{@render icon("map")}</span>
+			<span class="offsite-text">
+				Looking for a room? <strong>Snoopy</strong> maps the campus — every block,
+				mess and court.
+			</span>
+			<span class="offsite-go" aria-hidden="true">↗</span>
+		</a>
 	</section>
 </main>
 
@@ -569,246 +531,269 @@
 	.dash {
 		flex: 1;
 		width: 100%;
-		max-width: 780px;
+		max-width: 900px;
 		margin: 0 auto;
-		padding: 3.5rem 1.25rem 2rem;
+		padding: 3.5rem 1.25rem 3rem;
 		display: flex;
 		flex-direction: column;
-		gap: 2.25rem;
+		gap: 2.75rem;
 	}
 
-	.head h1 {
-		font-size: clamp(2.4rem, 10vw, 3.1rem);
-		margin-top: 0.4rem;
+	.head-text h1 {
+		font-size: clamp(2.4rem, 9vw, 3.4rem);
+		margin-top: 0.35rem;
 	}
 
-	.panel-head {
+	/* Section rule: a label and, sometimes, one control. */
+	.band {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding-bottom: 0.6rem;
-		margin-bottom: 0.85rem;
+		padding-bottom: 0.7rem;
+		margin-bottom: 1rem;
 		border-bottom: 1px solid var(--border);
 	}
 
-	.count {
-		font-family: var(--font-mono);
-		font-size: 0.68rem;
-		color: var(--text-muted);
+	.edit,
+	.chip {
+		padding: 0.32rem 0.75rem;
+		border: 1px solid var(--border-hover);
+		border-radius: 999px;
+		background: var(--bg-card);
+		color: var(--text-secondary);
+		font-family: inherit;
+		font-size: 0.76rem;
+		cursor: pointer;
+		transition:
+			background 0.15s,
+			color 0.15s,
+			border-color 0.15s;
+	}
+
+	.edit:hover,
+	.chip:hover {
+		color: var(--accent);
+		border-color: var(--accent);
+	}
+
+	.chip.on {
+		background: var(--accent);
+		border-color: var(--accent);
+		color: var(--accent-ink);
+	}
+
+	.chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.45rem;
+		margin-bottom: 1.1rem;
 	}
 
 	.quiet {
 		color: var(--text-muted);
 		font-size: 0.9rem;
-		padding: 0.4rem 0;
-	}
-
-	.empty {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-		flex-wrap: wrap;
-		color: var(--text-secondary);
-		font-size: 0.9rem;
-	}
-
-	/* --- next class --- */
-	.next {
-		display: flex;
-		gap: 1.1rem;
-		padding: 1.1rem 1.15rem;
-		border: 1px solid var(--border-hover);
-		border-left: 2px solid var(--accent);
+		padding: 1.25rem;
+		background: var(--bg-sunken);
 		border-radius: var(--radius);
+	}
+
+	/* --- today --- */
+	.today {
+		display: grid;
+		grid-template-columns: 1.05fr 1fr;
+		border-radius: 20px;
+		overflow: hidden;
+		border: 1px solid var(--border);
 		background: var(--bg-card);
-		color: var(--text);
-		text-decoration: none;
-		transition: background 0.15s;
+		box-shadow: var(--shadow);
 	}
 
-	.next:hover {
-		background: var(--bg-hover);
-	}
-
-	.next-when {
+	.up-next {
 		display: flex;
 		flex-direction: column;
-		gap: 0.15rem;
-		flex: none;
-		min-width: 5.5rem;
+		padding: 1.75rem;
+		background: var(--accent);
+		color: var(--accent-ink);
+	}
+
+	.label.on-accent {
+		color: var(--accent-ink);
+		opacity: 0.7;
+	}
+
+	.big-quiet {
+		margin-top: 1.5rem;
+		font-size: 1.25rem;
+		font-weight: 600;
+		letter-spacing: -0.02em;
+	}
+
+	.hero-cta {
+		margin-top: 0.5rem;
+		color: var(--accent-ink);
+		font-size: 0.88rem;
+		font-weight: 600;
+	}
+
+	.next-link {
+		display: flex;
+		flex-direction: column;
+		margin-top: 1.4rem;
+		color: inherit;
+		text-decoration: none;
 	}
 
 	.next-time {
 		font-family: var(--font-mono);
-		font-size: 1rem;
-		color: var(--accent);
+		font-size: 2.6rem;
+		font-weight: 500;
+		letter-spacing: -0.05em;
+		line-height: 1;
 	}
 
 	.next-until {
 		font-family: var(--font-mono);
-		font-size: 0.68rem;
-		color: var(--text-muted);
-	}
-
-	.next-body {
-		display: flex;
-		flex-direction: column;
-		gap: 0.15rem;
-		min-width: 0;
-	}
-
-	.next-code {
-		font-family: var(--font-mono);
-		font-size: 0.7rem;
-		color: var(--text-muted);
-		letter-spacing: 0.06em;
+		font-size: 0.72rem;
+		opacity: 0.75;
+		margin-top: 0.35rem;
 	}
 
 	.next-name {
-		font-family: var(--font-display);
-		font-size: 1.3rem;
+		font-size: 1.35rem;
 		font-weight: 700;
-		letter-spacing: -0.025em;
-		line-height: 1.15;
+		letter-spacing: -0.03em;
+		line-height: 1.2;
+		margin-top: 1rem;
 	}
 
 	.next-meta {
-		font-size: 0.8rem;
-		color: var(--text-secondary);
-	}
-
-	/* --- rest of the day --- */
-	.rest {
-		list-style: none;
-		margin-top: 0.9rem;
-	}
-
-	.rest li {
-		display: grid;
-		grid-template-columns: 5.5rem 5.5rem 1fr auto;
-		align-items: baseline;
-		gap: 0.75rem;
-		padding: 0.5rem 0.2rem;
-		border-bottom: 1px solid var(--border);
-		font-size: 0.85rem;
-	}
-
-	.rest li:last-child {
-		border-bottom: none;
-	}
-
-	.rest li.past {
-		opacity: 0.4;
-	}
-
-	.rest li.current .rest-name {
-		color: var(--text);
-	}
-
-	.rest-code {
 		font-family: var(--font-mono);
 		font-size: 0.72rem;
-		color: var(--text-secondary);
+		opacity: 0.8;
+		margin-top: 0.3rem;
 	}
 
-	.rest-name,
-	.rest-room {
+	/* The day as a spine you can read down. */
+	.timeline {
+		list-style: none;
+		padding: 1.5rem 1.5rem 1.5rem 1.25rem;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		gap: 0.15rem;
+	}
+
+	.timeline li {
+		position: relative;
+		display: grid;
+		grid-template-columns: 1.25rem 4.6rem 1fr auto;
+		align-items: baseline;
+		gap: 0.55rem;
+		padding: 0.45rem 0.5rem;
+		border-radius: var(--radius-sm);
+		font-size: 0.84rem;
+	}
+
+	/* the spine itself, drawn between the dots */
+	.timeline li:not(:last-child)::before {
+		content: "";
+		position: absolute;
+		left: calc(0.5rem + 0.5rem - 1px);
+		top: 1.25rem;
+		bottom: -0.3rem;
+		width: 2px;
+		background: var(--border);
+	}
+
+	.dot {
+		position: relative;
+		width: 9px;
+		height: 9px;
+		border-radius: 999px;
+		background: var(--border-strong);
+		align-self: center;
+		justify-self: start;
+		margin-left: 0.5rem;
+	}
+
+	.timeline li.current {
+		background: var(--accent-dim);
+	}
+
+	.timeline li.current .dot {
+		background: var(--accent);
+		box-shadow: 0 0 0 4px var(--accent-dim);
+	}
+
+	.timeline li.past {
+		opacity: 0.45;
+	}
+
+	.tl-time {
+		font-family: var(--font-mono);
+		font-size: 0.72rem;
+		color: var(--text-muted);
+	}
+
+	.tl-name,
+	.tl-room {
 		color: var(--text-secondary);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
-	.rest-room {
-		font-size: 0.72rem;
+	.timeline li.current .tl-name {
+		color: var(--text);
+		font-weight: 600;
+	}
+
+	.tl-room {
+		font-family: var(--font-mono);
+		font-size: 0.7rem;
 		color: var(--text-muted);
 	}
 
-	.mono {
-		font-family: var(--font-mono);
-		font-size: 0.75rem;
-		color: var(--text-muted);
-	}
-
-	/* --- widgets --- */
-	.widgets-head .add {
-		font-family: var(--font-mono);
-		font-size: 0.65rem;
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
-		color: var(--text-muted);
-		background: none;
-		border: none;
-		cursor: pointer;
-		padding: 0;
-		transition: color 0.15s;
-	}
-
-	.widgets-head .add:hover {
-		color: var(--accent);
-	}
-
-	.chips {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.4rem;
-		margin-bottom: 0.85rem;
-	}
-
-	.chip {
-		padding: 0.3rem 0.6rem;
-		border: 1px dashed var(--border-hover);
-		border-radius: var(--radius-sm);
-		background: none;
-		color: var(--text-secondary);
-		font-family: var(--font-mono);
-		font-size: 0.72rem;
-		cursor: pointer;
-	}
-
-	.chip.on {
-		border-style: solid;
-		border-color: var(--accent);
-		color: var(--accent);
-		background: var(--accent-dim);
-	}
-
-	.widgets {
+	/* --- widget cards: one shape, one height --- */
+	.cards {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-		gap: 0.75rem;
+		grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+		gap: 0.9rem;
 	}
 
-	.widget {
+	.card {
 		display: flex;
 		flex-direction: column;
-		gap: 0.15rem;
-		padding: 1rem 1.1rem 1.1rem;
+		min-height: 158px;
+		padding: 1.25rem;
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
 		background: var(--bg-card);
 		color: var(--text);
 		text-decoration: none;
 		transition:
-			border-color 0.15s,
-			background 0.15s;
+			transform 0.18s ease,
+			box-shadow 0.18s ease,
+			border-color 0.18s ease;
 	}
 
-	.widget:hover {
+	.card:hover {
+		transform: translateY(-3px);
 		border-color: var(--border-hover);
-		background: var(--bg-hover);
+		box-shadow: var(--shadow);
 	}
 
-	/* The number is the widget, so it is set in mono at display size —
-	   figures line up across tiles and read as data, not decoration. */
+	.card.span2 {
+		grid-column: span 2;
+	}
+
 	.stat {
 		font-family: var(--font-mono);
-		font-size: 2.1rem;
+		font-size: 2rem;
 		font-weight: 500;
 		letter-spacing: -0.04em;
 		line-height: 1.1;
-		margin-top: 0.5rem;
+		margin-top: auto;
 	}
 
 	.stat.dim {
@@ -817,68 +802,24 @@
 
 	.unit {
 		font-family: var(--font-mono);
-		font-size: 0.8rem;
+		font-size: 0.75rem;
 		color: var(--text-muted);
 		margin-left: 0.25rem;
 	}
 
 	.sub {
-		font-size: 0.78rem;
+		font-size: 0.76rem;
 		color: var(--text-secondary);
-	}
-
-	/* A list of courses needs more width than a single figure does. */
-	.widget.wide {
-		grid-column: span 2;
-	}
-
-	@media (max-width: 420px) {
-		.widget.wide {
-			grid-column: span 1;
-		}
-	}
-
-	.att {
-		list-style: none;
-		margin: 0.6rem 0 0.7rem;
-	}
-
-	.att li {
-		display: flex;
-		align-items: baseline;
-		gap: 0.5rem;
-		padding: 0.28rem 0;
-		border-bottom: 1px solid var(--border);
-	}
-
-	.att li:last-child {
-		border-bottom: none;
-	}
-
-	.att-name {
-		flex: 1;
-		min-width: 0;
-		font-size: 0.82rem;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.att-pct {
-		font-family: var(--font-mono);
-		font-size: 0.85rem;
-		font-weight: 500;
-	}
-
-	.att-pct.dim {
-		color: var(--text-muted);
+		margin-top: 0.2rem;
 	}
 
 	.bar {
 		display: flex;
-		height: 2px;
-		margin-top: 0.7rem;
-		background: var(--border);
+		height: 6px;
+		margin-top: 0.75rem;
+		border-radius: 999px;
+		background: var(--bg-sunken);
+		overflow: hidden;
 	}
 
 	.bar span {
@@ -889,37 +830,102 @@
 
 	/* done is solid, in-progress is the same hue held back */
 	.bar-doing {
-		background: color-mix(in srgb, var(--accent) 38%, transparent);
+		background: color-mix(in srgb, var(--accent) 30%, transparent);
 	}
 
-	/* --- index --- */
-	.index {
-		border-top: 1px solid var(--border);
+	/* --- attendance, per course --- */
+	.att {
+		list-style: none;
+		margin: 0.9rem 0 0.25rem;
+		display: grid;
+		gap: 0.45rem;
 	}
 
-	.row {
+	.att li {
+		display: grid;
+		grid-template-columns: minmax(0, 8rem) 1fr 2.6rem;
+		align-items: center;
+		gap: 0.65rem;
+	}
+
+	.att-name {
+		font-size: 0.8rem;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.att-track {
+		height: 6px;
+		border-radius: 999px;
+		background: var(--bg-sunken);
+		overflow: hidden;
+	}
+
+	.att-fill {
+		display: block;
+		height: 100%;
+		border-radius: 999px;
+	}
+
+	.att-pct {
+		font-family: var(--font-mono);
+		font-size: 0.78rem;
+		font-weight: 500;
+		text-align: right;
+	}
+
+	.att-pct.dim {
+		color: var(--text-muted);
+	}
+
+	/* --- pages --- */
+	.pages {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+		gap: 0.75rem;
+	}
+
+	.page {
 		display: flex;
 		align-items: center;
-		gap: 0.85rem;
-		padding: 0.85rem 0.35rem;
-		border-bottom: 1px solid var(--border);
+		gap: 0.9rem;
+		padding: 0.95rem 1.1rem;
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		background: var(--bg-card);
 		color: var(--text);
 		text-decoration: none;
-		transition: background 0.15s;
+		transition:
+			transform 0.18s ease,
+			box-shadow 0.18s ease,
+			border-color 0.18s ease;
 	}
 
-	.row:hover {
-		background: var(--bg-card);
+	.page:hover {
+		transform: translateY(-3px);
+		border-color: var(--border-hover);
+		box-shadow: var(--shadow);
 	}
 
-	.row-icon {
+	.page-icon {
 		flex: none;
-		color: var(--text-muted);
 		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 36px;
+		height: 36px;
+		border-radius: 11px;
+		background: var(--bg-sunken);
+		color: var(--text-secondary);
+		transition:
+			background 0.18s ease,
+			color 0.18s ease;
 	}
 
-	.row:hover .row-icon {
-		color: var(--accent);
+	.page:hover .page-icon {
+		background: var(--accent);
+		color: var(--accent-ink);
 	}
 
 	.icon {
@@ -927,72 +933,117 @@
 		height: 18px;
 	}
 
-	.row-body {
+	.page-body {
 		display: flex;
 		flex-direction: column;
 		min-width: 0;
-		flex: 1;
 	}
 
-	.row-title {
-		font-size: 0.95rem;
-		font-weight: 500;
+	.page-title {
+		font-size: 0.92rem;
+		font-weight: 600;
 	}
 
-	.row-blurb {
-		font-size: 0.8rem;
+	.page-blurb {
+		font-size: 0.76rem;
 		color: var(--text-muted);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
-	.row-tag {
-		flex: none;
-		font-size: 0.62rem;
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
-	}
-
-	.row-arrow {
-		flex: none;
-		width: 15px;
-		height: 15px;
+	/* Deliberately not a card: no fill, no shadow, dashed rule — present, but
+	   never mistaken for part of the app. */
+	.offsite {
+		display: flex;
+		align-items: center;
+		gap: 0.7rem;
+		margin-top: 1.1rem;
+		padding: 0.8rem 0.9rem;
+		border: 1px dashed var(--border-hover);
+		border-radius: var(--radius);
 		color: var(--text-muted);
-		transition: transform 0.15s;
+		text-decoration: none;
+		font-size: 0.8rem;
+		transition:
+			color 0.18s ease,
+			border-color 0.18s ease;
 	}
 
-	.row:hover .row-arrow {
-		transform: translateX(3px);
+	.offsite:hover {
+		color: var(--text-secondary);
+		border-color: var(--accent);
+	}
+
+	.offsite-icon {
+		flex: none;
+		display: inline-flex;
+		color: var(--text-muted);
+	}
+
+	.offsite:hover .offsite-icon {
 		color: var(--accent);
 	}
 
-	@media (max-width: 560px) {
+	.offsite-icon :global(.icon) {
+		width: 15px;
+		height: 15px;
+	}
+
+	.offsite-text {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.offsite strong {
+		font-weight: 600;
+		color: var(--text-secondary);
+	}
+
+	.offsite-go {
+		flex: none;
+		font-family: var(--font-mono);
+		transition: transform 0.18s ease;
+	}
+
+	.offsite:hover .offsite-go {
+		transform: translate(2px, -2px);
+		color: var(--accent);
+	}
+
+	@media (max-width: 720px) {
+		.today {
+			grid-template-columns: 1fr;
+		}
+
+		.timeline {
+			padding: 1.1rem 1.1rem 1.25rem 0.9rem;
+		}
+
+		.card.span2 {
+			grid-column: span 1;
+		}
+	}
+
+	@media (max-width: 520px) {
 		.dash {
-			padding: 2.5rem 1rem 1.5rem;
-			gap: 1.75rem;
+			padding: 2.5rem 0.9rem 2rem;
+			gap: 2rem;
 		}
 
-		.next {
-			flex-direction: column;
-			gap: 0.6rem;
+		.up-next {
+			padding: 1.4rem;
 		}
 
-		.next-when {
-			flex-direction: row;
-			align-items: baseline;
-			gap: 0.5rem;
+		.next-time {
+			font-size: 2.2rem;
 		}
 
-		.rest li {
-			grid-template-columns: 4.6rem 1fr auto;
+		.att li {
+			grid-template-columns: minmax(0, 1fr) 2.6rem;
 		}
 
-		.rest-code {
-			display: none;
-		}
-
-		.row-tag {
+		.att-track {
 			display: none;
 		}
 	}

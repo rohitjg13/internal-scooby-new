@@ -494,7 +494,8 @@
 		width: 56px;
 		height: 56px;
 		border-radius: 12px;
-		background: #ffffff;
+		background: var(--bg-card);
+		border: 1px solid var(--border);
 		border: 1px solid var(--border);
 		display: flex;
 		align-items: center;
@@ -511,7 +512,7 @@
 
 	.logo-fallback {
 		font-weight: 600;
-		color: #111;
+		color: var(--text);
 		font-size: 1.1rem;
 	}
 
