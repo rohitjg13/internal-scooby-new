@@ -7,58 +7,53 @@
 :root {
 	color-scheme: light;
 
-	/* Warm paper, never pure white — the ground the whole app sits on. */
-	--bg: #faf9f7;
+	/* Warm newsprint, not white. */
+	--bg: #fffdf6;
 	--bg-card: #ffffff;
-	--bg-hover: #f2f0ec;
+	--bg-hover: #f5f1e6;
 	--bg-input: #ffffff;
-	--bg-sunken: #f5f3ef;
+	--bg-sunken: #f4f0e4;
 
-	--text: #1a1815;
-	--text-secondary: #56514a;
-	--text-muted: #6f6960;
+	--text: #14110d;
+	--text-secondary: #4c463c;
+	--text-muted: #6b6456;
 
-	--border: #e9e5dd;
-	--border-hover: #d7d1c6;
-	/* For the few borders that must actually be seen, not felt. */
-	--border-strong: #b6afa3;
+	--border: #e3ded0;
+	--border-hover: #cbc4b0;
+	--border-strong: #9d9581;
 
-	/* One accent, used only where something is interactive or chosen. */
-	--accent: #5a3ff3;
-	--accent-hover: #4930d8;
-	--accent-ink: #ffffff;
-	--accent-dim: rgba(90, 63, 243, 0.1);
+	/* A signal colour — the one that means "do something here". */
+	--accent: #e12d0b;
+	--accent-hover: #bd2308;
+	--accent-ink: #fffdf6;
+	--accent-dim: rgba(225, 45, 11, 0.12);
 
 	--ok: #0a6f45;
 	--warn: #8a5300;
-	--bad: #d33a2c;
-	--conflict: #d33a2c;
+	--bad: #c62317;
+	--conflict: #c62317;
 
-	--ring: rgba(90, 63, 243, 0.55);
-	/* Light needs shadow for depth where dark used contrast. */
-	--shadow: 0 1px 2px rgba(26, 24, 21, 0.05), 0 10px 28px -14px rgba(26, 24, 21, 0.22);
-	--shadow-lift: 0 2px 4px rgba(26, 24, 21, 0.06), 0 18px 40px -18px rgba(26, 24, 21, 0.28);
+	--ring: rgba(225, 45, 11, 0.6);
+	--shadow: 0 1px 2px rgba(20, 17, 13, 0.05), 0 10px 28px -14px rgba(20, 17, 13, 0.22);
+	--shadow-lift: 0 2px 4px rgba(20, 17, 13, 0.06), 0 18px 40px -18px rgba(20, 17, 13, 0.28);
 
-	--font: 'Libre Franklin', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-	--font-display: 'Libre Franklin', -apple-system, 'Segoe UI', sans-serif;
-	--font-mono: 'IBM Plex Mono', 'SF Mono', ui-monospace, monospace;
+	/* Per-thing colour: hue is identity, the theme supplies lightness and
+	   chroma. Saturated and solid — these are blocks of colour, not washes. */
+	/* 0.49, not higher: at 0.56 the teal and green hues dropped under 4.5:1
+	   both as small text and under white ink, measured across all eight. */
+	--tone-l: 0.49;
+	--tone-c: 0.19;
+	--tone-on: #fffdf6;
+	--tone-soft-l: 0.94;
+	--tone-soft-c: 0.05;
 
-	/* Per-thing colour: the hue is the identity, the theme supplies the
-	   lightness and chroma. One hue list, two themes, no second palette. */
-	--tone-bg-l: 0.965;
-	--tone-bg-c: 0.035;
-	--tone-edge-l: 0.9;
-	--tone-edge-c: 0.06;
-	--tone-ink-l: 0.47;
-	--tone-ink-c: 0.16;
-
-	--hue-violet: 288;
-	--hue-blue: 240;
+	--hue-red: 27;
+	--hue-orange: 55;
+	--hue-yellow: 88;
+	--hue-green: 145;
 	--hue-teal: 195;
-	--hue-green: 150;
-	--hue-lime: 120;
-	--hue-amber: 70;
-	--hue-orange: 45;
+	--hue-blue: 250;
+	--hue-purple: 300;
 	--hue-pink: 355;
 
 	/* Academic-calendar categories: one hue each, defined per theme because
@@ -71,10 +66,15 @@
 	--cat-restricted: #86527f;
 
 	/* Lightness the planner builds its per-department hues at. */
-	--tint-l: 0.58;
+	--tint-l: 0.55;
 
-	--radius: 8px;
-	--radius-sm: 5px;
+	--font: 'Libre Franklin', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--font-display: 'Libre Franklin', -apple-system, 'Segoe UI', sans-serif;
+	--font-mono: 'IBM Plex Mono', 'SF Mono', ui-monospace, monospace;
+
+	--radius: 7px;
+	--radius-sm: 4px;
+
 }
 
 /* Dark theme. Same roles, same accent hue lifted so it still reads as the
@@ -84,40 +84,39 @@
 	:root:not([data-theme='light']) {
 		color-scheme: dark;
 
-		--bg: #0e0d0c;
-		--bg-card: #1a1917;
-		--bg-hover: #262421;
-		--bg-input: #1a1917;
-		--bg-sunken: #131211;
+		--bg: #0d0c09;
+		--bg-card: #191712;
+		--bg-hover: #25221b;
+		--bg-input: #191712;
+		--bg-sunken: #131110;
 
-		--text: #f7f3ec;
-		--text-secondary: #bdb6a9;
-		--text-muted: #948c7f;
+		--text: #faf6ec;
+		--text-secondary: #c2baa9;
+		--text-muted: #968d7c;
 
-		--border: #35312b;
-		--border-hover: #4b453d;
-		--border-strong: #6a6357;
+		--border: #37322a;
+		--border-hover: #4e473c;
+		--border-strong: #6d6455;
 
-		--accent: #9d88ff;
-		--accent-hover: #b4a3ff;
-		--accent-ink: #130f1d;
-		--accent-dim: rgba(157, 136, 255, 0.2);
+		--accent: #ff5a35;
+		--accent-hover: #ff7452;
+		--accent-ink: #150c08;
+		--accent-dim: rgba(255, 90, 53, 0.2);
 
 		--ok: #5bd196;
 		--warn: #e8b155;
 		--bad: #ff8073;
 		--conflict: #ff8073;
 
-		--ring: rgba(157, 136, 255, 0.65);
+		--ring: rgba(255, 90, 53, 0.65);
 		--shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -14px rgba(0, 0, 0, 0.7);
 		--shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.45), 0 18px 40px -18px rgba(0, 0, 0, 0.8);
 
-		--tone-bg-l: 0.3;
-		--tone-bg-c: 0.055;
-		--tone-edge-l: 0.44;
-		--tone-edge-c: 0.085;
-		--tone-ink-l: 0.87;
-		--tone-ink-c: 0.15;
+		--tone-l: 0.72;
+		--tone-c: 0.17;
+		--tone-on: #150f08;
+		--tone-soft-l: 0.26;
+		--tone-soft-c: 0.05;
 
 		--cat-exam: #a99bea;
 		--cat-deadline: #d7b167;
@@ -126,40 +125,46 @@
 		--cat-event: #8ea6c9;
 		--cat-restricted: #cf9dc7;
 
-		--tint-l: 0.78;
+		--tint-l: 0.75;
 	}
 }
 
 :root[data-theme='dark'] {
 	color-scheme: dark;
 
-	--bg: #0e0d0c;
-	--bg-card: #1a1917;
-	--bg-hover: #262421;
-	--bg-input: #1a1917;
-	--bg-sunken: #131211;
+	--bg: #0d0c09;
+	--bg-card: #191712;
+	--bg-hover: #25221b;
+	--bg-input: #191712;
+	--bg-sunken: #131110;
 
-	--text: #f7f3ec;
-	--text-secondary: #bdb6a9;
-	--text-muted: #948c7f;
+	--text: #faf6ec;
+	--text-secondary: #c2baa9;
+	--text-muted: #968d7c;
 
-	--border: #35312b;
-	--border-hover: #4b453d;
-	--border-strong: #6a6357;
+	--border: #37322a;
+	--border-hover: #4e473c;
+	--border-strong: #6d6455;
 
-	--accent: #9d88ff;
-	--accent-hover: #b4a3ff;
-	--accent-ink: #130f1d;
-	--accent-dim: rgba(157, 136, 255, 0.2);
+	--accent: #ff5a35;
+	--accent-hover: #ff7452;
+	--accent-ink: #150c08;
+	--accent-dim: rgba(255, 90, 53, 0.2);
 
 	--ok: #5bd196;
 	--warn: #e8b155;
 	--bad: #ff8073;
 	--conflict: #ff8073;
 
-	--ring: rgba(157, 136, 255, 0.65);
+	--ring: rgba(255, 90, 53, 0.65);
 	--shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -14px rgba(0, 0, 0, 0.7);
 	--shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.45), 0 18px 40px -18px rgba(0, 0, 0, 0.8);
+
+	--tone-l: 0.72;
+	--tone-c: 0.17;
+	--tone-on: #150f08;
+	--tone-soft-l: 0.26;
+	--tone-soft-c: 0.05;
 
 	--cat-exam: #a99bea;
 	--cat-deadline: #d7b167;
@@ -168,7 +173,7 @@
 	--cat-event: #8ea6c9;
 	--cat-restricted: #cf9dc7;
 
-	--tint-l: 0.78;
+	--tint-l: 0.75;
 }
 
 * {
@@ -236,16 +241,18 @@ h2 {
 }
 
 /* A thing that owns a hue sets --h; these three read it. */
-.tone-bg {
-	background: oklch(var(--tone-bg-l) var(--tone-bg-c) var(--h));
+/* A thing that owns a hue sets --h; these read it. */
+.tone-solid {
+	background: oklch(var(--tone-l) var(--tone-c) var(--h));
+	color: var(--tone-on);
 }
 
-.tone-edge {
-	border-color: oklch(var(--tone-edge-l) var(--tone-edge-c) var(--h));
+.tone-soft {
+	background: oklch(var(--tone-soft-l) var(--tone-soft-c) var(--h));
 }
 
 .tone-ink {
-	color: oklch(var(--tone-ink-l) var(--tone-ink-c) var(--h));
+	color: oklch(var(--tone-l) var(--tone-c) var(--h));
 }
 
 /* Micro-label: the mono uppercase caption used all over the app */

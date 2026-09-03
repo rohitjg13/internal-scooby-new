@@ -63,7 +63,7 @@
 		},
 		{
 			title: "GPA Calculator",
-			hue: "violet",
+			hue: "purple",
 			blurb: "SGPA and CGPA on your admission year's scale.",
 			href: "/gpa",
 			icon: "gpa",
@@ -79,7 +79,7 @@
 		},
 		{
 			title: "Minors",
-			hue: "amber",
+			hue: "orange",
 			blurb: "Core courses, elective baskets, credit requirements.",
 			href: "/minors",
 			icon: "minor",
@@ -121,7 +121,7 @@
 
 	// The day's dots cycle through the hue list, so a timetable reads as a
 	// sequence rather than a column of identical marks.
-	const HUES = ["blue", "teal", "green", "amber", "orange", "pink", "violet"];
+	const HUES = ["red", "blue", "green", "orange", "teal", "pink", "purple"];
 
 	const greeting = $derived(
 		now.getHours() < 5
@@ -378,7 +378,7 @@
 	</header>
 
 	<!-- Up next, and the shape of the rest of the day. -->
-	<section class="today" style="--h: var(--hue-violet)">
+	<section class="today" style="--h: var(--hue-purple)">
 		<div class="up-next">
 			<span class="tag">{running ? "In class" : "Up next"}</span>
 
@@ -448,7 +448,7 @@
 			<div class="cards">
 				{#each widgets as id (id)}
 					{#if id === "gpa"}
-						<a class="card tone-bg tone-edge" href="/gpa" style="--h: var(--hue-violet)">
+						<a class="card" href="/gpa" style="--h: var(--hue-purple)">
 							<span class="label tone-ink">CGPA</span>
 							{#if gpa}
 								<span class="stat tone-ink">{gpa.cgpa.toFixed(2)}</span>
@@ -460,7 +460,7 @@
 						</a>
 					{:else if id === "attendance"}
 						<a
-							class="card span2 tone-bg tone-edge"
+							class="card span2"
 							href="/attendance-calculator"
 							style="--h: var(--hue-green)"
 						>
@@ -503,7 +503,7 @@
 						</a>
 					{:else if id === "semester"}
 						<a
-							class="card tone-bg tone-edge"
+							class="card"
 							href="/academic-calendar"
 							style="--h: var(--hue-teal)"
 						>
@@ -514,7 +514,7 @@
 						</a>
 					{:else if minorById(id)}
 						{@const m = minorById(id)!}
-						<a class="card tone-bg tone-edge" href={m.href} style="--h: var(--hue-amber)">
+						<a class="card" href={m.href} style="--h: var(--hue-orange)">
 							<span class="label tone-ink">{m.name}</span>
 							<span class="stat tone-ink"
 								>{m.done}<span class="unit">/ {m.goal || "—"} cr</span></span
@@ -550,7 +550,7 @@
 		<div class="pages">
 			{#each features as f}
 				<a class="page" href={f.href} style="--h: var(--hue-{f.hue})">
-					<span class="page-icon tone-bg tone-ink">{@render icon(f.icon)}</span>
+					<span class="page-icon tone-solid">{@render icon(f.icon)}</span>
 					<span class="page-body">
 						<span class="page-title">{f.title}</span>
 						<span class="page-blurb">{f.blurb}</span>
@@ -577,79 +577,109 @@
 </main>
 
 <style>
-	/* Paper with a faint dot grid — texture you notice only if you look. */
 	.dash {
 		flex: 1;
 		width: 100%;
-		max-width: 900px;
+		max-width: 860px;
 		margin: 0 auto;
-		padding: 3.5rem 1.25rem 3rem;
+		padding: 2rem 1rem 2rem;
 		display: flex;
 		flex-direction: column;
-		gap: 2.5rem;
+		gap: 1.5rem;
+	}
+
+	/* --- masthead --- */
+	.head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		flex-wrap: wrap;
+		padding-bottom: 0.85rem;
+		border-bottom: 3px solid var(--text);
 	}
 
 	.brand {
 		display: flex;
 		align-items: center;
-		gap: 0.65rem;
+		gap: 0.5rem;
 	}
 
 	.mark {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 42px;
-		height: 42px;
-		border-radius: 10px;
+		width: 30px;
+		height: 30px;
+		border-radius: var(--radius-sm);
 		background: var(--accent);
 		color: var(--accent-ink);
 	}
 
 	.mark svg {
-		width: 26px;
-		height: 26px;
+		width: 19px;
+		height: 19px;
 	}
 
 	.head h1 {
-		font-size: clamp(2.1rem, 7vw, 2.8rem);
-		letter-spacing: -0.04em;
+		font-size: 1.65rem;
+		font-weight: 800;
+		letter-spacing: -0.045em;
 	}
 
 	.greeting {
-		margin-top: 0.6rem;
-		color: var(--text-secondary);
-		font-size: 0.95rem;
+		margin: 0;
+		font-family: var(--font-mono);
+		font-size: 0.72rem;
+		letter-spacing: 0.02em;
+		color: var(--text-muted);
 	}
 
+	/* --- section rules --- */
 	.band {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		margin-bottom: 0.9rem;
+		gap: 0.75rem;
+		margin-bottom: 0.55rem;
+	}
+
+	.band .label {
+		white-space: nowrap;
+	}
+
+	/* a rule that fills whatever space the label leaves */
+	.band::after {
+		content: "";
+		flex: 1;
+		height: 1px;
+		background: var(--border);
+		order: 1;
+	}
+
+	.band .pill {
+		order: 2;
 	}
 
 	.pill {
-		padding: 0.35rem 0.8rem;
+		padding: 0.2rem 0.55rem;
 		border: 2px solid var(--border-hover);
-		border-radius: 6px;
+		border-radius: var(--radius-sm);
 		background: var(--bg-card);
 		color: var(--text-secondary);
-		font-family: inherit;
-		font-size: 0.78rem;
-		font-weight: 600;
+		font-family: var(--font-mono);
+		font-size: 0.68rem;
+		font-weight: 500;
 		cursor: pointer;
 		transition:
-			background 0.15s,
-			color 0.15s,
-			border-color 0.15s,
-			transform 0.15s;
+			background 0.12s,
+			color 0.12s,
+			border-color 0.12s;
 	}
 
 	.pill:hover {
 		color: var(--accent);
 		border-color: var(--accent);
-		transform: translateY(-1px);
 	}
 
 	.pill.on {
@@ -661,14 +691,14 @@
 	.chips {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.45rem;
-		margin-bottom: 1rem;
+		gap: 0.3rem;
+		margin-bottom: 0.6rem;
 	}
 
 	.quiet {
 		color: var(--text-muted);
-		font-size: 0.9rem;
-		padding: 1.4rem;
+		font-size: 0.82rem;
+		padding: 0.8rem;
 		background: var(--bg-sunken);
 		border-radius: var(--radius);
 	}
@@ -676,54 +706,53 @@
 	/* --- today --- */
 	.today {
 		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 0.9rem;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+		gap: 0.5rem;
 	}
 
 	.up-next {
 		display: flex;
 		flex-direction: column;
-		padding: 1.6rem;
-		border-radius: 10px;
+		padding: 1rem 1.1rem;
+		border-radius: var(--radius);
 		background: var(--accent);
 		color: var(--accent-ink);
 	}
 
 	.tag {
 		align-self: flex-start;
-		padding: 0.25rem 0.6rem;
-		border-radius: 5px;
-		/* Mixed from the ink so it holds in both themes — a white wash would
-		   vanish on dark, where the accent is light and the ink is dark. */
-		background: color-mix(in srgb, var(--accent-ink) 20%, transparent);
+		padding: 0.15rem 0.45rem;
+		border-radius: var(--radius-sm);
+		background: color-mix(in srgb, var(--accent-ink) 22%, transparent);
 		font-family: var(--font-mono);
-		font-size: 0.62rem;
-		letter-spacing: 0.16em;
+		font-size: 0.6rem;
+		font-weight: 500;
+		letter-spacing: 0.14em;
 		text-transform: uppercase;
 	}
 
 	.big {
-		margin-top: 1.4rem;
-		font-size: 1.7rem;
-		font-weight: 700;
-		letter-spacing: -0.03em;
-		line-height: 1.15;
+		margin-top: 0.7rem;
+		font-size: 1.35rem;
+		font-weight: 800;
+		letter-spacing: -0.035em;
+		line-height: 1.1;
 	}
 
 	.big-sub {
-		font-size: 0.85rem;
-		opacity: 0.8;
-		margin-top: 0.3rem;
+		font-size: 0.78rem;
+		opacity: 0.85;
+		margin-top: 0.15rem;
 	}
 
 	.cta {
 		align-self: flex-start;
-		margin-top: 0.8rem;
-		padding: 0.45rem 0.9rem;
-		border-radius: 6px;
+		margin-top: 0.6rem;
+		padding: 0.3rem 0.65rem;
+		border-radius: var(--radius-sm);
 		background: var(--accent-ink);
 		color: var(--accent);
-		font-size: 0.82rem;
+		font-size: 0.78rem;
 		font-weight: 700;
 		text-decoration: none;
 	}
@@ -732,89 +761,75 @@
 		display: flex;
 		flex-direction: column;
 		margin-top: auto;
-		padding-top: 1.4rem;
+		padding-top: 0.7rem;
 		color: inherit;
 		text-decoration: none;
 	}
 
 	.next-time {
 		font-family: var(--font-mono);
-		font-size: 2.9rem;
+		font-size: 2.5rem;
 		font-weight: 500;
-		letter-spacing: -0.055em;
-		line-height: 1;
+		letter-spacing: -0.06em;
+		line-height: 0.95;
 	}
 
 	.next-until {
 		font-family: var(--font-mono);
-		font-size: 0.74rem;
-		opacity: 0.8;
-		margin-top: 0.35rem;
+		font-size: 0.7rem;
+		opacity: 0.85;
+		margin-top: 0.2rem;
 	}
 
 	.next-name {
-		font-size: 1.3rem;
+		font-size: 1.05rem;
 		font-weight: 700;
-		letter-spacing: -0.03em;
+		letter-spacing: -0.025em;
 		line-height: 1.2;
-		margin-top: 0.9rem;
+		margin-top: 0.55rem;
 	}
 
 	.next-meta {
 		font-family: var(--font-mono);
-		font-size: 0.72rem;
-		opacity: 0.8;
-		margin-top: 0.25rem;
+		font-size: 0.67rem;
+		opacity: 0.85;
+		margin-top: 0.1rem;
 	}
 
-	/* --- the day, as a spine --- */
+	/* --- the day --- */
 	.timeline {
 		list-style: none;
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
-		gap: 0.1rem;
-		padding: 1.25rem 1.1rem;
+		gap: 0;
+		padding: 0.5rem 0.6rem;
 		border: 2px solid var(--border);
-		border-radius: 10px;
+		border-radius: var(--radius);
 		background: var(--bg-card);
 	}
 
 	.timeline li {
-		position: relative;
 		display: grid;
-		grid-template-columns: 1.1rem 4.4rem 1fr auto;
+		grid-template-columns: 5px 4.1rem minmax(0, 1fr) auto;
 		align-items: center;
-		gap: 0.55rem;
-		padding: 0.42rem 0.5rem;
-		border-radius: 6px;
-		font-size: 0.83rem;
+		gap: 0.5rem;
+		padding: 0.28rem 0.35rem;
+		border-radius: var(--radius-sm);
+		font-size: 0.79rem;
 	}
 
-	.timeline li:not(:last-child)::before {
-		content: "";
-		position: absolute;
-		left: 1.03rem;
-		top: 1.5rem;
-		bottom: -0.4rem;
-		width: 2px;
-		background: var(--border);
-	}
-
+	/* a solid bar of the class's colour, not a dot on a string */
 	.dot {
-		width: 11px;
-		height: 11px;
-		border-radius: 999px;
-		background: oklch(var(--tone-ink-l) var(--tone-ink-c) var(--h));
-		justify-self: center;
+		width: 5px;
+		align-self: stretch;
+		min-height: 15px;
+		border-radius: 2px;
+		background: oklch(var(--tone-l) var(--tone-c) var(--h));
 	}
 
 	.timeline li.current {
 		background: var(--accent-dim);
-	}
-
-	.timeline li.current .dot {
-		box-shadow: 0 0 0 4px var(--accent-dim);
 	}
 
 	.timeline li.past {
@@ -823,7 +838,7 @@
 
 	.tl-time {
 		font-family: var(--font-mono);
-		font-size: 0.71rem;
+		font-size: 0.69rem;
 		color: var(--text-muted);
 	}
 
@@ -842,35 +857,36 @@
 
 	.tl-room {
 		font-family: var(--font-mono);
-		font-size: 0.69rem;
+		font-size: 0.66rem;
 		color: var(--text-muted);
 	}
 
-	/* --- widget cards --- */
+	/* --- widgets --- */
 	.cards {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
-		gap: 0.9rem;
+		grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+		gap: 0.5rem;
 	}
 
 	.card {
 		display: flex;
 		flex-direction: column;
-		min-height: 160px;
-		padding: 1.25rem;
-		border: 2px solid;
+		min-height: 108px;
+		padding: 0.7rem 0.8rem;
+		border: 2px solid var(--border);
 		border-radius: var(--radius);
+		background: var(--bg-card);
 		color: var(--text);
 		text-decoration: none;
 		transition:
-			transform 0.16s ease,
-			box-shadow 0.16s ease;
+			border-color 0.12s ease,
+			transform 0.12s ease;
 	}
 
 	.card:hover,
 	.page:hover {
-		transform: translate(-2px, -2px);
-		box-shadow: 4px 4px 0 oklch(var(--tone-edge-l) var(--tone-edge-c) var(--h));
+		border-color: oklch(var(--tone-l) var(--tone-c) var(--h));
+		transform: translateY(-1px);
 	}
 
 	.card.span2 {
@@ -879,10 +895,10 @@
 
 	.stat {
 		font-family: var(--font-mono);
-		font-size: 2.1rem;
+		font-size: 1.75rem;
 		font-weight: 500;
-		letter-spacing: -0.045em;
-		line-height: 1.1;
+		letter-spacing: -0.05em;
+		line-height: 1;
 		margin-top: auto;
 	}
 
@@ -892,74 +908,73 @@
 
 	.unit {
 		font-family: var(--font-mono);
-		font-size: 0.75rem;
-		opacity: 0.65;
-		margin-left: 0.25rem;
+		font-size: 0.68rem;
+		opacity: 0.6;
+		margin-left: 0.2rem;
 	}
 
 	.sub {
-		font-size: 0.76rem;
+		font-size: 0.7rem;
 		color: var(--text-secondary);
-		margin-top: 0.2rem;
+		margin-top: 0.15rem;
 	}
 
 	.bar {
 		display: flex;
-		height: 7px;
-		margin-top: 0.75rem;
-		border-radius: 999px;
-		background: color-mix(in srgb, var(--text) 8%, transparent);
+		height: 5px;
+		margin-top: 0.45rem;
+		border-radius: 2px;
+		background: color-mix(in srgb, var(--text) 9%, transparent);
 		overflow: hidden;
 	}
 
 	.tone-fill {
 		display: block;
 		height: 100%;
-		background: oklch(var(--tone-ink-l) var(--tone-ink-c) var(--h));
+		background: oklch(var(--tone-l) var(--tone-c) var(--h));
 	}
 
 	.tone-fill.faded {
-		opacity: 0.35;
+		opacity: 0.4;
 	}
 
-	/* --- attendance, per course --- */
+	/* --- attendance --- */
 	.att {
 		list-style: none;
-		margin: 0.9rem 0 0.25rem;
+		margin: 0.5rem 0 0.15rem;
 		display: grid;
-		gap: 0.45rem;
+		gap: 0.28rem;
 	}
 
 	.att li {
 		display: grid;
-		grid-template-columns: minmax(0, 8rem) 1fr 2.6rem;
+		grid-template-columns: minmax(0, 7rem) minmax(0, 1fr) 2.3rem;
 		align-items: center;
-		gap: 0.65rem;
+		gap: 0.5rem;
 	}
 
 	.att-name {
-		font-size: 0.8rem;
+		font-size: 0.74rem;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
 	.att-track {
-		height: 7px;
-		border-radius: 999px;
-		background: color-mix(in srgb, var(--text) 8%, transparent);
+		height: 5px;
+		border-radius: 2px;
+		background: color-mix(in srgb, var(--text) 9%, transparent);
 		overflow: hidden;
 	}
 
 	.att-fill {
 		display: block;
 		height: 100%;
-		border-radius: 999px;
 	}
 
 	.att-pct {
 		font-family: var(--font-mono);
-		font-size: 0.78rem;
+		font-size: 0.72rem;
 		font-weight: 600;
 		text-align: right;
 	}
@@ -971,28 +986,23 @@
 	/* --- pages --- */
 	.pages {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
-		gap: 0.75rem;
+		grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+		gap: 0.4rem;
 	}
 
 	.page {
 		display: flex;
 		align-items: center;
-		gap: 0.85rem;
-		padding: 0.9rem 1rem;
+		gap: 0.55rem;
+		padding: 0.5rem 0.6rem;
 		border: 2px solid var(--border);
 		border-radius: var(--radius);
 		background: var(--bg-card);
 		color: var(--text);
 		text-decoration: none;
 		transition:
-			transform 0.16s ease,
-			box-shadow 0.16s ease,
-			border-color 0.16s ease;
-	}
-
-	.page:hover {
-		border-color: oklch(var(--tone-edge-l) var(--tone-edge-c) var(--h));
+			border-color 0.12s ease,
+			transform 0.12s ease;
 	}
 
 	.page-icon {
@@ -1000,14 +1010,14 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 40px;
-		height: 40px;
-		border-radius: 8px;
+		width: 28px;
+		height: 28px;
+		border-radius: var(--radius-sm);
 	}
 
 	.icon {
-		width: 19px;
-		height: 19px;
+		width: 16px;
+		height: 16px;
 	}
 
 	.page-body {
@@ -1017,34 +1027,35 @@
 	}
 
 	.page-title {
-		font-size: 0.92rem;
+		font-size: 0.83rem;
 		font-weight: 700;
+		line-height: 1.25;
 	}
 
 	.page-blurb {
-		font-size: 0.75rem;
+		font-size: 0.68rem;
 		color: var(--text-muted);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
-	/* Deliberately not a card: no fill, dashed rule — present, but never
-	   mistaken for part of the app. */
+	/* Not a card: no fill, dashed rule — present, never mistaken for one of
+	   Scooby's own pages. */
 	.offsite {
 		display: flex;
 		align-items: center;
-		gap: 0.7rem;
-		margin-top: 1rem;
-		padding: 0.8rem 0.9rem;
+		gap: 0.5rem;
+		margin-top: 0.5rem;
+		padding: 0.45rem 0.6rem;
 		border: 2px dashed var(--border-hover);
 		border-radius: var(--radius);
 		color: var(--text-muted);
 		text-decoration: none;
-		font-size: 0.8rem;
+		font-size: 0.72rem;
 		transition:
-			color 0.18s ease,
-			border-color 0.18s ease;
+			color 0.12s ease,
+			border-color 0.12s ease;
 	}
 
 	.offsite:hover {
@@ -1062,8 +1073,8 @@
 	}
 
 	.offsite-icon :global(.icon) {
-		width: 15px;
-		height: 15px;
+		width: 13px;
+		height: 13px;
 	}
 
 	.offsite-text {
@@ -1079,15 +1090,9 @@
 	.offsite-go {
 		flex: none;
 		font-family: var(--font-mono);
-		transition: transform 0.18s ease;
 	}
 
-	.offsite:hover .offsite-go {
-		transform: translate(2px, -2px);
-		color: var(--accent);
-	}
-
-	@media (max-width: 720px) {
+	@media (max-width: 700px) {
 		.today {
 			grid-template-columns: 1fr;
 		}
@@ -1097,18 +1102,17 @@
 		}
 	}
 
-	@media (max-width: 520px) {
+	@media (max-width: 480px) {
 		.dash {
-			padding: 2.5rem 0.9rem 2rem;
-			gap: 2rem;
+			padding: 1.5rem 0.75rem 1.5rem;
 		}
 
 		.next-time {
-			font-size: 2.4rem;
+			font-size: 2.1rem;
 		}
 
 		.att li {
-			grid-template-columns: minmax(0, 1fr) 2.6rem;
+			grid-template-columns: minmax(0, 1fr) 2.3rem;
 		}
 
 		.att-track {

@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
 	<title>Scooby</title>
-	<rect width="64" height="64" rx="14" fill="#5a3ff3"/>
+	<rect width="64" height="64" rx="10" fill="#e12d0b"/>
 	<!-- A collar tag: the app is the thing that fetches your day. -->
 	<path d="M18 20h28" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".55"/>
 	<path d="M32 20v9" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".55"/>
 	<circle cx="32" cy="42" r="13" fill="#fff"/>
-	<circle cx="32" cy="42" r="4.5" fill="#5a3ff3"/>
+	<circle cx="32" cy="42" r="4.5" fill="#e12d0b"/>
 </svg>

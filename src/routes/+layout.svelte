@@ -31,8 +31,8 @@
 </script>
 
 <svelte:head>
-	<meta name="theme-color" content="#faf9f7" media="(prefers-color-scheme: light)" />
-	<meta name="theme-color" content="#131211" media="(prefers-color-scheme: dark)" />
+	<meta name="theme-color" content="#fffdf6" media="(prefers-color-scheme: light)" />
+	<meta name="theme-color" content="#0d0c09" media="(prefers-color-scheme: dark)" />
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link
 		rel="preconnect"
