@@ -363,8 +363,18 @@
 
 <main class="dash">
 	<header class="head">
-		<p class="label">{dateLine}</p>
-		<h1>{greeting}.</h1>
+		<div class="brand">
+			<span class="mark" aria-hidden="true">
+				<svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+					<path d="M18 20h28" stroke="currentColor" stroke-width="5" stroke-linecap="round" opacity=".5" />
+					<path d="M32 20v9" stroke="currentColor" stroke-width="5" stroke-linecap="round" opacity=".5" />
+					<circle cx="32" cy="42" r="13" fill="currentColor" />
+					<circle cx="32" cy="42" r="4.5" fill="var(--accent)" />
+				</svg>
+			</span>
+			<h1>Scooby</h1>
+		</div>
+		<p class="greeting">{greeting} · {dateLine}</p>
 	</header>
 
 	<!-- Up next, and the shape of the rest of the day. -->
@@ -579,9 +589,37 @@
 		gap: 2.5rem;
 	}
 
+	.brand {
+		display: flex;
+		align-items: center;
+		gap: 0.65rem;
+	}
+
+	.mark {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 42px;
+		height: 42px;
+		border-radius: 10px;
+		background: var(--accent);
+		color: var(--accent-ink);
+	}
+
+	.mark svg {
+		width: 26px;
+		height: 26px;
+	}
+
 	.head h1 {
-		font-size: clamp(2.3rem, 8vw, 3.2rem);
-		margin-top: 0.35rem;
+		font-size: clamp(2.1rem, 7vw, 2.8rem);
+		letter-spacing: -0.04em;
+	}
+
+	.greeting {
+		margin-top: 0.6rem;
+		color: var(--text-secondary);
+		font-size: 0.95rem;
 	}
 
 	.band {
@@ -594,7 +632,7 @@
 	.pill {
 		padding: 0.35rem 0.8rem;
 		border: 2px solid var(--border-hover);
-		border-radius: 999px;
+		border-radius: 6px;
 		background: var(--bg-card);
 		color: var(--text-secondary);
 		font-family: inherit;
@@ -646,15 +684,15 @@
 		display: flex;
 		flex-direction: column;
 		padding: 1.6rem;
-		border-radius: 24px;
+		border-radius: 10px;
 		background: var(--accent);
 		color: var(--accent-ink);
 	}
 
 	.tag {
 		align-self: flex-start;
-		padding: 0.25rem 0.7rem;
-		border-radius: 999px;
+		padding: 0.25rem 0.6rem;
+		border-radius: 5px;
 		/* Mixed from the ink so it holds in both themes — a white wash would
 		   vanish on dark, where the accent is light and the ink is dark. */
 		background: color-mix(in srgb, var(--accent-ink) 20%, transparent);
@@ -682,7 +720,7 @@
 		align-self: flex-start;
 		margin-top: 0.8rem;
 		padding: 0.45rem 0.9rem;
-		border-radius: 999px;
+		border-radius: 6px;
 		background: var(--accent-ink);
 		color: var(--accent);
 		font-size: 0.82rem;
@@ -738,7 +776,7 @@
 		gap: 0.1rem;
 		padding: 1.25rem 1.1rem;
 		border: 2px solid var(--border);
-		border-radius: 24px;
+		border-radius: 10px;
 		background: var(--bg-card);
 	}
 
@@ -749,7 +787,7 @@
 		align-items: center;
 		gap: 0.55rem;
 		padding: 0.42rem 0.5rem;
-		border-radius: 999px;
+		border-radius: 6px;
 		font-size: 0.83rem;
 	}
 
@@ -964,7 +1002,7 @@
 		justify-content: center;
 		width: 40px;
 		height: 40px;
-		border-radius: 13px;
+		border-radius: 8px;
 	}
 
 	.icon {

@@ -15,8 +15,8 @@
 	--bg-sunken: #f5f3ef;
 
 	--text: #1a1815;
-	--text-secondary: #5c574f;
-	--text-muted: #8a837a;
+	--text-secondary: #56514a;
+	--text-muted: #6f6960;
 
 	--border: #e9e5dd;
 	--border-hover: #d7d1c6;
@@ -29,8 +29,8 @@
 	--accent-ink: #ffffff;
 	--accent-dim: rgba(90, 63, 243, 0.1);
 
-	--ok: #0e8a54;
-	--warn: #b26b00;
+	--ok: #0a6f45;
+	--warn: #8a5300;
 	--bad: #d33a2c;
 	--conflict: #d33a2c;
 
@@ -49,7 +49,7 @@
 	--tone-bg-c: 0.035;
 	--tone-edge-l: 0.9;
 	--tone-edge-c: 0.06;
-	--tone-ink-l: 0.5;
+	--tone-ink-l: 0.47;
 	--tone-ink-c: 0.16;
 
 	--hue-violet: 288;
@@ -73,8 +73,8 @@
 	/* Lightness the planner builds its per-department hues at. */
 	--tint-l: 0.58;
 
-	--radius: 18px;
-	--radius-sm: 12px;
+	--radius: 8px;
+	--radius-sm: 5px;
 }
 
 /* Dark theme. Same roles, same accent hue lifted so it still reads as the
@@ -84,40 +84,40 @@
 	:root:not([data-theme='light']) {
 		color-scheme: dark;
 
-		--bg: #131211;
-		--bg-card: #1b1a17;
-		--bg-hover: #232120;
-		--bg-input: #1b1a17;
-		--bg-sunken: #0e0d0c;
+		--bg: #0e0d0c;
+		--bg-card: #1a1917;
+		--bg-hover: #262421;
+		--bg-input: #1a1917;
+		--bg-sunken: #131211;
 
-		--text: #f0ece4;
-		--text-secondary: #a9a297;
-		--text-muted: #7e776d;
+		--text: #f7f3ec;
+		--text-secondary: #bdb6a9;
+		--text-muted: #948c7f;
 
-		--border: #2b2926;
-		--border-hover: #3d3a35;
-		--border-strong: #56524a;
+		--border: #35312b;
+		--border-hover: #4b453d;
+		--border-strong: #6a6357;
 
-		--accent: #8f79ff;
-		--accent-hover: #a692ff;
-		--accent-ink: #16111f;
-		--accent-dim: rgba(143, 121, 255, 0.16);
+		--accent: #9d88ff;
+		--accent-hover: #b4a3ff;
+		--accent-ink: #130f1d;
+		--accent-dim: rgba(157, 136, 255, 0.2);
 
-		--ok: #4ec38a;
-		--warn: #dda43f;
-		--bad: #ef6f60;
-		--conflict: #ef6f60;
+		--ok: #5bd196;
+		--warn: #e8b155;
+		--bad: #ff8073;
+		--conflict: #ff8073;
 
-		--ring: rgba(143, 121, 255, 0.6);
+		--ring: rgba(157, 136, 255, 0.65);
 		--shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -14px rgba(0, 0, 0, 0.7);
 		--shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.45), 0 18px 40px -18px rgba(0, 0, 0, 0.8);
 
-		--tone-bg-l: 0.26;
-		--tone-bg-c: 0.045;
-		--tone-edge-l: 0.36;
-		--tone-edge-c: 0.07;
-		--tone-ink-l: 0.84;
-		--tone-ink-c: 0.14;
+		--tone-bg-l: 0.3;
+		--tone-bg-c: 0.055;
+		--tone-edge-l: 0.44;
+		--tone-edge-c: 0.085;
+		--tone-ink-l: 0.87;
+		--tone-ink-c: 0.15;
 
 		--cat-exam: #a99bea;
 		--cat-deadline: #d7b167;
@@ -133,31 +133,31 @@
 :root[data-theme='dark'] {
 	color-scheme: dark;
 
-	--bg: #131211;
-	--bg-card: #1b1a17;
-	--bg-hover: #232120;
-	--bg-input: #1b1a17;
-	--bg-sunken: #0e0d0c;
+	--bg: #0e0d0c;
+	--bg-card: #1a1917;
+	--bg-hover: #262421;
+	--bg-input: #1a1917;
+	--bg-sunken: #131211;
 
-	--text: #f0ece4;
-	--text-secondary: #a9a297;
-	--text-muted: #7e776d;
+	--text: #f7f3ec;
+	--text-secondary: #bdb6a9;
+	--text-muted: #948c7f;
 
-	--border: #2b2926;
-	--border-hover: #3d3a35;
-	--border-strong: #56524a;
+	--border: #35312b;
+	--border-hover: #4b453d;
+	--border-strong: #6a6357;
 
-	--accent: #8f79ff;
-	--accent-hover: #a692ff;
-	--accent-ink: #16111f;
-	--accent-dim: rgba(143, 121, 255, 0.16);
+	--accent: #9d88ff;
+	--accent-hover: #b4a3ff;
+	--accent-ink: #130f1d;
+	--accent-dim: rgba(157, 136, 255, 0.2);
 
-	--ok: #4ec38a;
-	--warn: #dda43f;
-	--bad: #ef6f60;
-	--conflict: #ef6f60;
+	--ok: #5bd196;
+	--warn: #e8b155;
+	--bad: #ff8073;
+	--conflict: #ff8073;
 
-	--ring: rgba(143, 121, 255, 0.6);
+	--ring: rgba(157, 136, 255, 0.65);
 	--shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -14px rgba(0, 0, 0, 0.7);
 	--shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.45), 0 18px 40px -18px rgba(0, 0, 0, 0.8);
 

@@ -100,7 +100,7 @@
 		margin: 0 auto 1.5rem;
 		padding: 0.4rem 0.85rem;
 		border: 1px solid var(--border);
-		border-radius: 999px;
+		border-radius: 6px;
 		background: var(--bg-card);
 		color: var(--text-secondary);
 		font-family: inherit;
