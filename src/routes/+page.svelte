@@ -40,11 +40,14 @@
 		href: string;
 		icon: IconName;
 		tag: string;
+		/** Which hue this tool owns, from the list in app.css. */
+		hue: string;
 	};
 
 	const features: Feature[] = [
 		{
 			title: "Timetable Planner",
+			hue: "blue",
 			blurb: "Batch, UWEs, CCCs and electives — with every clash flagged.",
 			href: "/collision-checker",
 			icon: "calendar",
@@ -52,6 +55,7 @@
 		},
 		{
 			title: "Academic Calendar",
+			hue: "teal",
 			blurb: "Holidays, exam weeks and add/drop deadlines.",
 			href: "/academic-calendar",
 			icon: "semester",
@@ -59,6 +63,7 @@
 		},
 		{
 			title: "GPA Calculator",
+			hue: "violet",
 			blurb: "SGPA and CGPA on your admission year's scale.",
 			href: "/gpa",
 			icon: "gpa",
@@ -66,6 +71,7 @@
 		},
 		{
 			title: "Attendance Calculator",
+			hue: "green",
 			blurb: "How far behind you are, and what you can still skip.",
 			href: "/attendance-calculator",
 			icon: "attendance",
@@ -73,6 +79,7 @@
 		},
 		{
 			title: "Minors",
+			hue: "amber",
 			blurb: "Core courses, elective baskets, credit requirements.",
 			href: "/minors",
 			icon: "minor",
@@ -80,6 +87,7 @@
 		},
 		{
 			title: "Timetable Changes",
+			hue: "pink",
 			blurb: "Every revision the university pushed, and what moved.",
 			href: "/changes",
 			icon: "history",
@@ -100,12 +108,30 @@
 	const next = $derived(todays.find((c) => c.end > mins) ?? null);
 	const done = $derived(todays.filter((c) => c.end <= mins).length);
 
+	// A class already running: what you want is when you get out, not that it
+	// started.
 	function untilLabel(c: ClassSlot) {
-		if (c.start <= mins) return "in progress";
+		if (c.start <= mins) return `ends ${minutesToTime(c.end)}`;
 		const d = c.start - mins;
 		if (d < 60) return `in ${d} min`;
 		return `in ${Math.floor(d / 60)}h ${d % 60 ? `${d % 60}m` : ""}`.trim();
 	}
+
+	const running = $derived(next !== null && next.start <= mins);
+
+	// The day's dots cycle through the hue list, so a timetable reads as a
+	// sequence rather than a column of identical marks.
+	const HUES = ["blue", "teal", "green", "amber", "orange", "pink", "violet"];
+
+	const greeting = $derived(
+		now.getHours() < 5
+			? "Up late"
+			: now.getHours() < 12
+				? "Good morning"
+				: now.getHours() < 17
+					? "Good afternoon"
+					: "Good evening",
+	);
 
 	/* ---- widgets ---- */
 	const WIDGET_KEY = "scooby.dashboard.widgets";
@@ -337,26 +363,26 @@
 
 <main class="dash">
 	<header class="head">
-		<div class="head-text">
-			<p class="label">{dateLine}</p>
-			<h1>Scooby</h1>
-		</div>
+		<p class="label">{dateLine}</p>
+		<h1>{greeting}.</h1>
 	</header>
 
-	<!-- Today, as one panel: what is next, and the shape of the rest of it. -->
-	<section class="today" aria-label="Today">
+	<!-- Up next, and the shape of the rest of the day. -->
+	<section class="today" style="--h: var(--hue-violet)">
 		<div class="up-next">
-			<span class="label on-accent">Up next</span>
+			<span class="tag">{running ? "In class" : "Up next"}</span>
 
 			{#if !planLoaded}
-				<p class="big-quiet">Reading your timetable…</p>
+				<p class="big">One sec…</p>
 			{:else if !hasPlan}
-				<p class="big-quiet">No timetable saved yet.</p>
-				<a class="hero-cta" href="/collision-checker">Build one →</a>
+				<p class="big">No timetable yet</p>
+				<a class="cta" href="/collision-checker">Build one →</a>
 			{:else if !today}
-				<p class="big-quiet">Sunday — nothing timetabled.</p>
+				<p class="big">It's Sunday 🌤</p>
+				<span class="big-sub">Nothing timetabled.</span>
 			{:else if !todays.length}
-				<p class="big-quiet">No classes today.</p>
+				<p class="big">Nothing today 🎉</p>
+				<span class="big-sub">Not a single class.</span>
 			{:else if next}
 				<a class="next-link" href="/collision-checker">
 					<span class="next-time">{minutesToTime(next.start)}</span>
@@ -365,15 +391,16 @@
 					<span class="next-meta">{next.courseCode} · {next.room || "Room TBA"}</span>
 				</a>
 			{:else}
-				<p class="big-quiet">That's today done.</p>
+				<p class="big">You're done 🎉</p>
+				<span class="big-sub">That was the last one today.</span>
 			{/if}
 		</div>
 
 		{#if todays.length}
-			<ol class="timeline" aria-label="Today's classes">
-				{#each todays as c}
+			<ol class="timeline">
+				{#each todays as c, i}
 					<li class:past={c.end <= mins} class:current={c === next}>
-						<span class="dot"></span>
+						<span class="dot" style="--h: var(--hue-{HUES[i % HUES.length]})"></span>
 						<span class="tl-time">{minutesToTime(c.start)}</span>
 						<span class="tl-name">{c.courseName}</span>
 						<span class="tl-room">{c.room || "—"}</span>
@@ -387,7 +414,7 @@
 	<section aria-label="Widgets">
 		<div class="band">
 			<span class="label">Your numbers</span>
-			<button class="edit" onclick={() => (picking = !picking)} aria-expanded={picking}>
+			<button class="pill" onclick={() => (picking = !picking)} aria-expanded={picking}>
 				{picking ? "Done" : "Edit"}
 			</button>
 		</div>
@@ -396,7 +423,7 @@
 			<div class="chips">
 				{#each catalogue as w}
 					<button
-						class="chip"
+						class="pill"
 						class:on={widgets.includes(w.id)}
 						onclick={() => toggle(w.id)}
 					>
@@ -411,10 +438,10 @@
 			<div class="cards">
 				{#each widgets as id (id)}
 					{#if id === "gpa"}
-						<a class="card" href="/gpa">
-							<span class="label">CGPA</span>
+						<a class="card tone-bg tone-edge" href="/gpa" style="--h: var(--hue-violet)">
+							<span class="label tone-ink">CGPA</span>
 							{#if gpa}
-								<span class="stat">{gpa.cgpa.toFixed(2)}</span>
+								<span class="stat tone-ink">{gpa.cgpa.toFixed(2)}</span>
 								<span class="sub">{gpa.credits} credits graded</span>
 							{:else}
 								<span class="stat dim">—</span>
@@ -422,8 +449,12 @@
 							{/if}
 						</a>
 					{:else if id === "attendance"}
-						<a class="card span2" href="/attendance-calculator">
-							<span class="label">Attendance</span>
+						<a
+							class="card span2 tone-bg tone-edge"
+							href="/attendance-calculator"
+							style="--h: var(--hue-green)"
+						>
+							<span class="label tone-ink">Attendance</span>
 							{#if att}
 								<ul class="att">
 									{#each att.courses as c}
@@ -453,7 +484,7 @@
 								<span class="sub">
 									{att.below
 										? `${att.below} below ${att.target}%`
-										: `all above ${att.target}%`}
+										: `all above ${att.target}% ✳`}
 								</span>
 							{:else}
 								<span class="stat dim">—</span>
@@ -461,24 +492,33 @@
 							{/if}
 						</a>
 					{:else if id === "semester"}
-						<a class="card" href="/academic-calendar">
-							<span class="label">Semester</span>
-							<span class="stat">{semLeft.rem}<span class="unit">days</span></span>
+						<a
+							class="card tone-bg tone-edge"
+							href="/academic-calendar"
+							style="--h: var(--hue-teal)"
+						>
+							<span class="label tone-ink">Semester</span>
+							<span class="stat tone-ink">{semLeft.rem}<span class="unit">days</span></span>
 							<span class="sub">of teaching left</span>
-							<span class="bar"><span style:width="{semLeft.pct}%"></span></span>
+							<span class="bar"><span class="tone-fill" style:width="{semLeft.pct}%"></span></span>
 						</a>
 					{:else if minorById(id)}
 						{@const m = minorById(id)!}
-						<a class="card" href={m.href}>
-							<span class="label">{m.name}</span>
-							<span class="stat">{m.done}<span class="unit">/ {m.goal || "—"} cr</span></span>
+						<a class="card tone-bg tone-edge" href={m.href} style="--h: var(--hue-amber)">
+							<span class="label tone-ink">{m.name}</span>
+							<span class="stat tone-ink"
+								>{m.done}<span class="unit">/ {m.goal || "—"} cr</span></span
+							>
 							{#if m.goal}
 								<span class="sub">
 									{m.left} to go{m.doing ? `, ${m.doing} in progress` : ""}
 								</span>
 								<span class="bar">
-									<span class="bar-done" style:width="{(m.done / m.goal) * 100}%"></span>
-									<span class="bar-doing" style:width="{(m.doing / m.goal) * 100}%"></span>
+									<span class="tone-fill" style:width="{(m.done / m.goal) * 100}%"></span>
+									<span
+										class="tone-fill faded"
+										style:width="{(m.doing / m.goal) * 100}%"
+									></span>
 								</span>
 							{:else}
 								<!-- A minor whose document lists no parseable courses: name it,
@@ -499,8 +539,8 @@
 		<div class="band"><span class="label">Everything else</span></div>
 		<div class="pages">
 			{#each features as f}
-				<a class="page" href={f.href}>
-					<span class="page-icon">{@render icon(f.icon)}</span>
+				<a class="page" href={f.href} style="--h: var(--hue-{f.hue})">
+					<span class="page-icon tone-bg tone-ink">{@render icon(f.icon)}</span>
 					<span class="page-body">
 						<span class="page-title">{f.title}</span>
 						<span class="page-blurb">{f.blurb}</span>
@@ -509,8 +549,8 @@
 			{/each}
 		</div>
 
-		<!-- Snoopy is a different product, not one of Scooby's pages, so it
-		     gets its own quiet line rather than a tile competing with them. -->
+		<!-- Snoopy is a different product, not one of Scooby's pages, so it gets
+		     its own quiet line rather than a tile competing with them. -->
 		<a
 			class="offsite"
 			href="https://maps.rohitjg.com"
@@ -519,8 +559,7 @@
 		>
 			<span class="offsite-icon">{@render icon("map")}</span>
 			<span class="offsite-text">
-				Looking for a room? <strong>Snoopy</strong> maps the campus — every block,
-				mess and court.
+				Lost? <strong>Snoopy</strong> maps the campus — every block, mess and court.
 			</span>
 			<span class="offsite-go" aria-hidden="true">↗</span>
 		</a>
@@ -528,6 +567,7 @@
 </main>
 
 <style>
+	/* Paper with a faint dot grid — texture you notice only if you look. */
 	.dash {
 		flex: 1;
 		width: 100%;
@@ -536,47 +576,45 @@
 		padding: 3.5rem 1.25rem 3rem;
 		display: flex;
 		flex-direction: column;
-		gap: 2.75rem;
+		gap: 2.5rem;
 	}
 
-	.head-text h1 {
-		font-size: clamp(2.4rem, 9vw, 3.4rem);
+	.head h1 {
+		font-size: clamp(2.3rem, 8vw, 3.2rem);
 		margin-top: 0.35rem;
 	}
 
-	/* Section rule: a label and, sometimes, one control. */
 	.band {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding-bottom: 0.7rem;
-		margin-bottom: 1rem;
-		border-bottom: 1px solid var(--border);
+		margin-bottom: 0.9rem;
 	}
 
-	.edit,
-	.chip {
-		padding: 0.32rem 0.75rem;
-		border: 1px solid var(--border-hover);
+	.pill {
+		padding: 0.35rem 0.8rem;
+		border: 2px solid var(--border-hover);
 		border-radius: 999px;
 		background: var(--bg-card);
 		color: var(--text-secondary);
 		font-family: inherit;
-		font-size: 0.76rem;
+		font-size: 0.78rem;
+		font-weight: 600;
 		cursor: pointer;
 		transition:
 			background 0.15s,
 			color 0.15s,
-			border-color 0.15s;
+			border-color 0.15s,
+			transform 0.15s;
 	}
 
-	.edit:hover,
-	.chip:hover {
+	.pill:hover {
 		color: var(--accent);
 		border-color: var(--accent);
+		transform: translateY(-1px);
 	}
 
-	.chip.on {
+	.pill.on {
 		background: var(--accent);
 		border-color: var(--accent);
 		color: var(--accent-ink);
@@ -586,13 +624,13 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.45rem;
-		margin-bottom: 1.1rem;
+		margin-bottom: 1rem;
 	}
 
 	.quiet {
 		color: var(--text-muted);
 		font-size: 0.9rem;
-		padding: 1.25rem;
+		padding: 1.4rem;
 		background: var(--bg-sunken);
 		border-radius: var(--radius);
 	}
@@ -600,120 +638,137 @@
 	/* --- today --- */
 	.today {
 		display: grid;
-		grid-template-columns: 1.05fr 1fr;
-		border-radius: 20px;
-		overflow: hidden;
-		border: 1px solid var(--border);
-		background: var(--bg-card);
-		box-shadow: var(--shadow);
+		grid-template-columns: 1fr 1fr;
+		gap: 0.9rem;
 	}
 
 	.up-next {
 		display: flex;
 		flex-direction: column;
-		padding: 1.75rem;
+		padding: 1.6rem;
+		border-radius: 24px;
 		background: var(--accent);
 		color: var(--accent-ink);
 	}
 
-	.label.on-accent {
-		color: var(--accent-ink);
-		opacity: 0.7;
+	.tag {
+		align-self: flex-start;
+		padding: 0.25rem 0.7rem;
+		border-radius: 999px;
+		/* Mixed from the ink so it holds in both themes — a white wash would
+		   vanish on dark, where the accent is light and the ink is dark. */
+		background: color-mix(in srgb, var(--accent-ink) 20%, transparent);
+		font-family: var(--font-mono);
+		font-size: 0.62rem;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
 	}
 
-	.big-quiet {
-		margin-top: 1.5rem;
-		font-size: 1.25rem;
-		font-weight: 600;
-		letter-spacing: -0.02em;
+	.big {
+		margin-top: 1.4rem;
+		font-size: 1.7rem;
+		font-weight: 700;
+		letter-spacing: -0.03em;
+		line-height: 1.15;
 	}
 
-	.hero-cta {
-		margin-top: 0.5rem;
-		color: var(--accent-ink);
-		font-size: 0.88rem;
-		font-weight: 600;
+	.big-sub {
+		font-size: 0.85rem;
+		opacity: 0.8;
+		margin-top: 0.3rem;
+	}
+
+	.cta {
+		align-self: flex-start;
+		margin-top: 0.8rem;
+		padding: 0.45rem 0.9rem;
+		border-radius: 999px;
+		background: var(--accent-ink);
+		color: var(--accent);
+		font-size: 0.82rem;
+		font-weight: 700;
+		text-decoration: none;
 	}
 
 	.next-link {
 		display: flex;
 		flex-direction: column;
-		margin-top: 1.4rem;
+		margin-top: auto;
+		padding-top: 1.4rem;
 		color: inherit;
 		text-decoration: none;
 	}
 
 	.next-time {
 		font-family: var(--font-mono);
-		font-size: 2.6rem;
+		font-size: 2.9rem;
 		font-weight: 500;
-		letter-spacing: -0.05em;
+		letter-spacing: -0.055em;
 		line-height: 1;
 	}
 
 	.next-until {
 		font-family: var(--font-mono);
-		font-size: 0.72rem;
-		opacity: 0.75;
+		font-size: 0.74rem;
+		opacity: 0.8;
 		margin-top: 0.35rem;
 	}
 
 	.next-name {
-		font-size: 1.35rem;
+		font-size: 1.3rem;
 		font-weight: 700;
 		letter-spacing: -0.03em;
 		line-height: 1.2;
-		margin-top: 1rem;
+		margin-top: 0.9rem;
 	}
 
 	.next-meta {
 		font-family: var(--font-mono);
 		font-size: 0.72rem;
 		opacity: 0.8;
-		margin-top: 0.3rem;
+		margin-top: 0.25rem;
 	}
 
-	/* The day as a spine you can read down. */
+	/* --- the day, as a spine --- */
 	.timeline {
 		list-style: none;
-		padding: 1.5rem 1.5rem 1.5rem 1.25rem;
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
-		gap: 0.15rem;
+		gap: 0.1rem;
+		padding: 1.25rem 1.1rem;
+		border: 2px solid var(--border);
+		border-radius: 24px;
+		background: var(--bg-card);
 	}
 
 	.timeline li {
 		position: relative;
 		display: grid;
-		grid-template-columns: 1.25rem 4.6rem 1fr auto;
-		align-items: baseline;
+		grid-template-columns: 1.1rem 4.4rem 1fr auto;
+		align-items: center;
 		gap: 0.55rem;
-		padding: 0.45rem 0.5rem;
-		border-radius: var(--radius-sm);
-		font-size: 0.84rem;
+		padding: 0.42rem 0.5rem;
+		border-radius: 999px;
+		font-size: 0.83rem;
 	}
 
-	/* the spine itself, drawn between the dots */
 	.timeline li:not(:last-child)::before {
 		content: "";
 		position: absolute;
-		left: calc(0.5rem + 0.5rem - 1px);
-		top: 1.25rem;
-		bottom: -0.3rem;
+		left: 1.03rem;
+		top: 1.5rem;
+		bottom: -0.4rem;
 		width: 2px;
 		background: var(--border);
 	}
 
 	.dot {
-		position: relative;
-		width: 9px;
-		height: 9px;
+		width: 11px;
+		height: 11px;
 		border-radius: 999px;
-		background: var(--border-strong);
-		align-self: center;
-		justify-self: start;
-		margin-left: 0.5rem;
+		background: oklch(var(--tone-ink-l) var(--tone-ink-c) var(--h));
+		justify-self: center;
 	}
 
 	.timeline li.current {
@@ -721,17 +776,16 @@
 	}
 
 	.timeline li.current .dot {
-		background: var(--accent);
 		box-shadow: 0 0 0 4px var(--accent-dim);
 	}
 
 	.timeline li.past {
-		opacity: 0.45;
+		opacity: 0.4;
 	}
 
 	.tl-time {
 		font-family: var(--font-mono);
-		font-size: 0.72rem;
+		font-size: 0.71rem;
 		color: var(--text-muted);
 	}
 
@@ -745,16 +799,16 @@
 
 	.timeline li.current .tl-name {
 		color: var(--text);
-		font-weight: 600;
+		font-weight: 700;
 	}
 
 	.tl-room {
 		font-family: var(--font-mono);
-		font-size: 0.7rem;
+		font-size: 0.69rem;
 		color: var(--text-muted);
 	}
 
-	/* --- widget cards: one shape, one height --- */
+	/* --- widget cards --- */
 	.cards {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
@@ -764,23 +818,21 @@
 	.card {
 		display: flex;
 		flex-direction: column;
-		min-height: 158px;
+		min-height: 160px;
 		padding: 1.25rem;
-		border: 1px solid var(--border);
+		border: 2px solid;
 		border-radius: var(--radius);
-		background: var(--bg-card);
 		color: var(--text);
 		text-decoration: none;
 		transition:
-			transform 0.18s ease,
-			box-shadow 0.18s ease,
-			border-color 0.18s ease;
+			transform 0.16s ease,
+			box-shadow 0.16s ease;
 	}
 
-	.card:hover {
-		transform: translateY(-3px);
-		border-color: var(--border-hover);
-		box-shadow: var(--shadow);
+	.card:hover,
+	.page:hover {
+		transform: translate(-2px, -2px);
+		box-shadow: 4px 4px 0 oklch(var(--tone-edge-l) var(--tone-edge-c) var(--h));
 	}
 
 	.card.span2 {
@@ -789,9 +841,9 @@
 
 	.stat {
 		font-family: var(--font-mono);
-		font-size: 2rem;
+		font-size: 2.1rem;
 		font-weight: 500;
-		letter-spacing: -0.04em;
+		letter-spacing: -0.045em;
 		line-height: 1.1;
 		margin-top: auto;
 	}
@@ -803,7 +855,7 @@
 	.unit {
 		font-family: var(--font-mono);
 		font-size: 0.75rem;
-		color: var(--text-muted);
+		opacity: 0.65;
 		margin-left: 0.25rem;
 	}
 
@@ -815,22 +867,21 @@
 
 	.bar {
 		display: flex;
-		height: 6px;
+		height: 7px;
 		margin-top: 0.75rem;
 		border-radius: 999px;
-		background: var(--bg-sunken);
+		background: color-mix(in srgb, var(--text) 8%, transparent);
 		overflow: hidden;
 	}
 
-	.bar span {
+	.tone-fill {
 		display: block;
 		height: 100%;
-		background: var(--accent);
+		background: oklch(var(--tone-ink-l) var(--tone-ink-c) var(--h));
 	}
 
-	/* done is solid, in-progress is the same hue held back */
-	.bar-doing {
-		background: color-mix(in srgb, var(--accent) 30%, transparent);
+	.tone-fill.faded {
+		opacity: 0.35;
 	}
 
 	/* --- attendance, per course --- */
@@ -856,9 +907,9 @@
 	}
 
 	.att-track {
-		height: 6px;
+		height: 7px;
 		border-radius: 999px;
-		background: var(--bg-sunken);
+		background: color-mix(in srgb, var(--text) 8%, transparent);
 		overflow: hidden;
 	}
 
@@ -871,7 +922,7 @@
 	.att-pct {
 		font-family: var(--font-mono);
 		font-size: 0.78rem;
-		font-weight: 500;
+		font-weight: 600;
 		text-align: right;
 	}
 
@@ -882,30 +933,28 @@
 	/* --- pages --- */
 	.pages {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
 		gap: 0.75rem;
 	}
 
 	.page {
 		display: flex;
 		align-items: center;
-		gap: 0.9rem;
-		padding: 0.95rem 1.1rem;
-		border: 1px solid var(--border);
+		gap: 0.85rem;
+		padding: 0.9rem 1rem;
+		border: 2px solid var(--border);
 		border-radius: var(--radius);
 		background: var(--bg-card);
 		color: var(--text);
 		text-decoration: none;
 		transition:
-			transform 0.18s ease,
-			box-shadow 0.18s ease,
-			border-color 0.18s ease;
+			transform 0.16s ease,
+			box-shadow 0.16s ease,
+			border-color 0.16s ease;
 	}
 
 	.page:hover {
-		transform: translateY(-3px);
-		border-color: var(--border-hover);
-		box-shadow: var(--shadow);
+		border-color: oklch(var(--tone-edge-l) var(--tone-edge-c) var(--h));
 	}
 
 	.page-icon {
@@ -913,24 +962,14 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 36px;
-		height: 36px;
-		border-radius: 11px;
-		background: var(--bg-sunken);
-		color: var(--text-secondary);
-		transition:
-			background 0.18s ease,
-			color 0.18s ease;
-	}
-
-	.page:hover .page-icon {
-		background: var(--accent);
-		color: var(--accent-ink);
+		width: 40px;
+		height: 40px;
+		border-radius: 13px;
 	}
 
 	.icon {
-		width: 18px;
-		height: 18px;
+		width: 19px;
+		height: 19px;
 	}
 
 	.page-body {
@@ -941,26 +980,26 @@
 
 	.page-title {
 		font-size: 0.92rem;
-		font-weight: 600;
+		font-weight: 700;
 	}
 
 	.page-blurb {
-		font-size: 0.76rem;
+		font-size: 0.75rem;
 		color: var(--text-muted);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
-	/* Deliberately not a card: no fill, no shadow, dashed rule — present, but
-	   never mistaken for part of the app. */
+	/* Deliberately not a card: no fill, dashed rule — present, but never
+	   mistaken for part of the app. */
 	.offsite {
 		display: flex;
 		align-items: center;
 		gap: 0.7rem;
-		margin-top: 1.1rem;
+		margin-top: 1rem;
 		padding: 0.8rem 0.9rem;
-		border: 1px dashed var(--border-hover);
+		border: 2px dashed var(--border-hover);
 		border-radius: var(--radius);
 		color: var(--text-muted);
 		text-decoration: none;
@@ -978,7 +1017,6 @@
 	.offsite-icon {
 		flex: none;
 		display: inline-flex;
-		color: var(--text-muted);
 	}
 
 	.offsite:hover .offsite-icon {
@@ -996,7 +1034,7 @@
 	}
 
 	.offsite strong {
-		font-weight: 600;
+		font-weight: 700;
 		color: var(--text-secondary);
 	}
 
@@ -1016,10 +1054,6 @@
 			grid-template-columns: 1fr;
 		}
 
-		.timeline {
-			padding: 1.1rem 1.1rem 1.25rem 0.9rem;
-		}
-
 		.card.span2 {
 			grid-column: span 1;
 		}
@@ -1031,12 +1065,8 @@
 			gap: 2rem;
 		}
 
-		.up-next {
-			padding: 1.4rem;
-		}
-
 		.next-time {
-			font-size: 2.2rem;
+			font-size: 2.4rem;
 		}
 
 		.att li {

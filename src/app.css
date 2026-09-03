@@ -43,6 +43,24 @@
 	--font-display: 'Libre Franklin', -apple-system, 'Segoe UI', sans-serif;
 	--font-mono: 'IBM Plex Mono', 'SF Mono', ui-monospace, monospace;
 
+	/* Per-thing colour: the hue is the identity, the theme supplies the
+	   lightness and chroma. One hue list, two themes, no second palette. */
+	--tone-bg-l: 0.965;
+	--tone-bg-c: 0.035;
+	--tone-edge-l: 0.9;
+	--tone-edge-c: 0.06;
+	--tone-ink-l: 0.5;
+	--tone-ink-c: 0.16;
+
+	--hue-violet: 288;
+	--hue-blue: 240;
+	--hue-teal: 195;
+	--hue-green: 150;
+	--hue-lime: 120;
+	--hue-amber: 70;
+	--hue-orange: 45;
+	--hue-pink: 355;
+
 	/* Academic-calendar categories: one hue each, defined per theme because
 	   they are used as text as well as fill. */
 	--cat-exam: #5344a0;
@@ -55,8 +73,8 @@
 	/* Lightness the planner builds its per-department hues at. */
 	--tint-l: 0.58;
 
-	--radius: 14px;
-	--radius-sm: 9px;
+	--radius: 18px;
+	--radius-sm: 12px;
 }
 
 /* Dark theme. Same roles, same accent hue lifted so it still reads as the
@@ -93,6 +111,13 @@
 		--ring: rgba(143, 121, 255, 0.6);
 		--shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -14px rgba(0, 0, 0, 0.7);
 		--shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.45), 0 18px 40px -18px rgba(0, 0, 0, 0.8);
+
+		--tone-bg-l: 0.26;
+		--tone-bg-c: 0.045;
+		--tone-edge-l: 0.36;
+		--tone-edge-c: 0.07;
+		--tone-ink-l: 0.84;
+		--tone-ink-c: 0.14;
 
 		--cat-exam: #a99bea;
 		--cat-deadline: #d7b167;
@@ -208,6 +233,19 @@ h1 {
 
 h2 {
 	font-size: 1.3rem;
+}
+
+/* A thing that owns a hue sets --h; these three read it. */
+.tone-bg {
+	background: oklch(var(--tone-bg-l) var(--tone-bg-c) var(--h));
+}
+
+.tone-edge {
+	border-color: oklch(var(--tone-edge-l) var(--tone-edge-c) var(--h));
+}
+
+.tone-ink {
+	color: oklch(var(--tone-ink-l) var(--tone-ink-c) var(--h));
 }
 
 /* Micro-label: the mono uppercase caption used all over the app */
