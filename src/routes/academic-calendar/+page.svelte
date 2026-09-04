@@ -148,11 +148,11 @@
 	<section class="hero {cls(todayEntry)}">
 		<div class="hero-date">
 			<span class="hero-dow">
-				{new Date(today + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long" })}
+				{new Date(today + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short" })}
 			</span>
 			<span class="hero-num">{dayNum(today)}</span>
 			<span class="hero-month">
-				{new Date(today + "T00:00:00").toLocaleDateString("en-GB", { month: "long" })}
+				{new Date(today + "T00:00:00").toLocaleDateString("en-GB", { month: "short" })}
 			</span>
 		</div>
 
@@ -188,15 +188,20 @@
 				<ul>
 					{#each group.items as d (d.start)}
 						<li class="row {cls(d)}" class:now={d.start <= today && today <= d.end}>
-							<span class="marker"></span>
-							<div class="row-top">
-								<span class="row-date">
-									{pretty(d.start)}{d.end !== d.start ? ` – ${pretty(d.end)}` : ""}
+							<span class="chip">
+								<span class="chip-num">{dayNum(d.start)}</span>
+								{#if d.end !== d.start}
+									<span class="chip-run">–{dayNum(d.end)}</span>
+								{/if}
+							</span>
+							<span class="row-body">
+								<span class="row-text">{d.text}</span>
+								<span class="row-meta">
+									{pretty(d.start)}{d.end !== d.start ? ` – ${pretty(d.end)}` : ""} ·
+									{relative(d.start)}
 								</span>
-								<span class="row-rel">{relative(d.start)}</span>
-								<span class="kind {cls(d)}">{kindOf(d)}</span>
-							</div>
-							<p class="row-text">{d.text}</p>
+							</span>
+							<span class="kind {cls(d)}">{kindOf(d)}</span>
 						</li>
 					{/each}
 				</ul>
@@ -302,14 +307,15 @@
 	}
 
 	/* today ------------------------------------------------------------- */
+	/* The day is a solid block of its own colour rather than a card with a
+	   coloured edge and a rule down the middle. */
 	.hero {
 		display: flex;
-		gap: 1.25rem;
+		gap: 0.9rem;
 		align-items: stretch;
-		padding: 1.25rem;
-		border-radius: 16px;
-		border: 1px solid var(--border);
-		border-left: 3px solid var(--cat, var(--border-hover));
+		padding: 0.75rem;
+		border-radius: var(--radius);
+		border: 2px solid var(--border);
 		background: var(--bg-card);
 	}
 	.hero-date {
@@ -317,49 +323,53 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		min-width: 6rem;
-		padding: 0.25rem 1.25rem 0.25rem 0.25rem;
-		border-right: 1px solid var(--border);
+		min-width: 5.4rem;
+		padding: 0.6rem 0.5rem;
+		border-radius: var(--radius-sm);
+		background: var(--cat, var(--accent));
+		color: var(--bg-card);
 	}
 	.hero-dow,
 	.hero-month {
-		font-size: 0.7rem;
-		color: var(--text-muted);
+		font-family: var(--font-mono);
+		font-size: 0.62rem;
 		text-transform: uppercase;
-		letter-spacing: 0.1em;
+		letter-spacing: 0.12em;
+		opacity: 0.85;
 	}
 	.hero-num {
-		font-size: 3rem;
-		font-weight: 600;
-		line-height: 1.05;
+		font-size: 2.6rem;
+		font-weight: 500;
+		line-height: 1;
+		letter-spacing: -0.05em;
 		font-family: var(--font-mono);
-		color: var(--cat, var(--text));
 	}
 	.hero-body {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: 0.4rem;
 		justify-content: center;
 		min-width: 0;
 		flex: 1;
+		padding-right: 0.4rem;
 	}
 	.hero-text {
-		font-size: clamp(1.05rem, 3.5vw, 1.35rem);
-		letter-spacing: -0.01em;
-		line-height: 1.3;
+		font-size: clamp(1rem, 3vw, 1.2rem);
+		font-weight: 700;
+		letter-spacing: -0.02em;
+		line-height: 1.25;
 	}
 	.bar {
-		margin-top: 0.35rem;
+		margin-top: 0.25rem;
 		height: 5px;
-		border-radius: 999px;
-		background: var(--bg-hover);
+		border-radius: 2px;
+		background: color-mix(in srgb, var(--text) 9%, transparent);
 		overflow: hidden;
 	}
 	.bar span {
 		display: block;
 		height: 100%;
-		border-radius: 999px;
-		background: var(--cat, var(--text));
+		background: var(--cat, var(--accent));
 	}
 	.hero-meta {
 		font-family: var(--font-mono);
@@ -380,8 +390,8 @@
 		display: flex;
 		padding: 2px;
 		gap: 2px;
-		border: 1px solid var(--border);
-		border-radius: 999px;
+		border: 2px solid var(--border);
+		border-radius: var(--radius);
 		background: var(--bg-card);
 	}
 	.switch button {
@@ -390,13 +400,13 @@
 		font: inherit;
 		font-size: 0.78rem;
 		color: var(--text-muted);
-		padding: 0.3rem 0.8rem;
-		border-radius: 999px;
+		padding: 0.25rem 0.7rem;
+		border-radius: var(--radius-sm);
 		cursor: pointer;
 	}
 	.switch button.on {
-		background: var(--bg-hover);
-		color: var(--text);
+		background: var(--accent);
+		color: var(--accent-ink);
 	}
 
 	.group-head {
@@ -413,55 +423,61 @@
 	}
 	.list ul {
 		list-style: none;
-		margin-left: 0.35rem;
+		display: grid;
+		gap: 0.35rem;
 	}
 
-	/* each entry hangs off a single vertical line, with its own dot */
+	/* Each entry is its own row, led by the date in that kind's colour. */
 	.row {
-		position: relative;
-		padding: 0 0 1.1rem 1.4rem;
-		border-left: 1px solid var(--border);
-	}
-	.row:last-child {
-		border-left-color: transparent;
-	}
-	.marker {
-		position: absolute;
-		left: -4.5px;
-		top: 0.45rem;
-		width: 9px;
-		height: 9px;
-		border-radius: 50%;
-		background: var(--cat, var(--text-muted));
-		box-shadow: 0 0 0 4px var(--bg);
-	}
-	.row.now > .marker {
-		box-shadow:
-			0 0 0 4px var(--bg),
-			0 0 0 7px color-mix(in srgb, var(--cat, var(--text)) 35%, transparent);
-	}
-	.row-top {
 		display: flex;
 		align-items: center;
-		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: 0.7rem;
+		padding: 0.5rem 0.6rem;
+		border: 2px solid var(--border);
+		border-radius: var(--radius);
+		background: var(--bg-card);
 	}
-	.row-date {
-		font-size: 0.82rem;
+	.row.now {
+		border-color: var(--cat, var(--accent));
+	}
+	.chip {
+		flex: none;
+		display: flex;
+		align-items: baseline;
+		justify-content: center;
+		gap: 1px;
+		min-width: 2.6rem;
+		padding: 0.3rem 0.35rem;
+		border-radius: var(--radius-sm);
+		background: var(--cat, var(--text-muted));
+		color: var(--bg-card);
 		font-family: var(--font-mono);
-		color: var(--text-secondary);
 	}
-	.row-rel {
-		font-size: 0.72rem;
+	.chip-num {
+		font-size: 1rem;
+		font-weight: 500;
+		letter-spacing: -0.03em;
+	}
+	.chip-run {
+		font-size: 0.68rem;
+		opacity: 0.85;
+	}
+	.row-body {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		flex: 1;
+	}
+	.row-text {
+		font-size: 0.88rem;
+		font-weight: 600;
+		line-height: 1.3;
+	}
+	.row-meta {
+		font-family: var(--font-mono);
+		font-size: 0.66rem;
 		color: var(--text-muted);
 	}
-	.row-top .kind { margin-left: auto; }
-	.row-text {
-		margin-top: 0.15rem;
-		font-size: 0.98rem;
-		line-height: 1.35;
-	}
-	.row.now .row-text { color: var(--cat, var(--text)); }
 
 	/* month grids -------------------------------------------------------- */
 	.grid-section { margin-top: 2.5rem; }
@@ -485,9 +501,9 @@
 	}
 	.month {
 		background: var(--bg-card);
-		border: 1px solid var(--border);
-		border-radius: 14px;
-		padding: 1rem;
+		border: 2px solid var(--border);
+		border-radius: var(--radius);
+		padding: 0.8rem;
 	}
 	.month h3 {
 		font-size: 0.9rem;
@@ -514,25 +530,27 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 0.78rem;
-		border-radius: 8px;
+		font-size: 0.76rem;
+		border-radius: var(--radius-sm);
 		font-family: var(--font-mono);
 		color: var(--text-secondary);
 	}
+	/* A marked day is a solid block of its colour — at this size a 13% wash
+	   read as noise rather than as a category. */
 	.cell.exam,
 	.cell.holiday,
 	.cell.break,
 	.cell.deadline,
 	.cell.event {
-		color: var(--cat);
-		background: color-mix(in srgb, var(--cat) 13%, transparent);
+		color: var(--bg-card);
+		background: var(--cat);
 	}
 	.cell.blank { visibility: hidden; }
 	.cell.past { opacity: 0.4; }
 	.cell.today {
-		outline: 2px solid var(--text);
-		outline-offset: -2px;
-		color: var(--text);
+		outline: 2px solid var(--accent);
+		outline-offset: 1px;
+		font-weight: 700;
 	}
 
 	@media (max-width: 640px) {
@@ -545,13 +563,12 @@
 		.hero-date {
 			flex-direction: row;
 			align-items: baseline;
+			justify-content: flex-start;
 			gap: 0.5rem;
 			min-width: 0;
-			padding: 0 0 0.75rem;
-			border-right: 0;
-			border-bottom: 1px solid var(--border);
+			padding: 0.45rem 0.6rem;
 		}
-		.hero-num { font-size: 2rem; }
+		.hero-num { font-size: 1.6rem; }
 		.list-head {
 			flex-direction: column;
 			align-items: flex-start;
