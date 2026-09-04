@@ -138,8 +138,6 @@
 />
 
 <main class="page">
-	<a href="/" class="back">← Home</a>
-
 	<header class="head">
 		<h1>{cal.title}</h1>
 		{#each cal.notes as note}<p class="note">{note}</p>{/each}
@@ -264,14 +262,7 @@
 		width: 100%;
 	}
 
-	.back {
-		color: var(--text-muted);
-		text-decoration: none;
-		font-size: 0.85rem;
-	}
-	.back:hover { color: var(--text); }
-
-	.head { margin: 1.25rem 0 1.5rem; }
+	.head { margin: 0 0 1.5rem; }
 	.head h1 {
 		font-size: clamp(1.5rem, 5vw, 2rem);
 		letter-spacing: -0.02em;

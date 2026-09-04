@@ -66,7 +66,6 @@
 
 <main class="att">
 	<header class="att-head">
-		<a href="/" class="back">← Home</a>
 		<h1>Attendance Calculator</h1>
 		<p class="sub">
 			One card per course. Fill in each component and it tells you how many
@@ -312,18 +311,6 @@
 
 	.att-head {
 		margin-bottom: 2rem;
-	}
-
-	.back {
-		display: inline-block;
-		margin-bottom: 1rem;
-		color: var(--text-secondary);
-		text-decoration: none;
-		font-size: 0.85rem;
-	}
-
-	.back:hover {
-		color: var(--text);
 	}
 
 	.sub {

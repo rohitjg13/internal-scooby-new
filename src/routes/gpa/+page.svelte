@@ -96,8 +96,6 @@
 />
 
 <main class="gpa">
-	<a href="/" class="back">← Home</a>
-
 	<div class="top">
 		<div class="score">
 			<span class="score-n">{cgpa.cgpa.toFixed(2)}</span>
@@ -304,18 +302,6 @@
 		max-width: 900px;
 		margin: 0 auto;
 		padding: 2.5rem 1.25rem 3rem;
-	}
-
-	.back {
-		display: inline-block;
-		margin-bottom: 1.25rem;
-		color: var(--text-secondary);
-		text-decoration: none;
-		font-size: 0.85rem;
-	}
-
-	.back:hover {
-		color: var(--text);
 	}
 
 	/* Score strip */

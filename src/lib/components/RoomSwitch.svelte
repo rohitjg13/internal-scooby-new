@@ -180,7 +180,6 @@
 
 <main class="rs">
 	<header class="rs-head">
-		<a href="/" class="back">← Home</a>
 		<h1>Room Switch</h1>
 		<p class="sub">
 			Find someone in your hostel who wants to swap rooms. Browse who's looking, post your own
@@ -437,17 +436,7 @@
 	.rs-head {
 		margin-bottom: 2rem;
 	}
-	.back {
-		font-family: var(--font-mono);
-		font-size: 0.8rem;
-		color: var(--text-secondary);
-		text-decoration: none;
-	}
-	.back:hover {
-		color: var(--text);
-	}
 	.rs-head h1 {
-		margin-top: 1rem;
 		font-size: clamp(2rem, 7vw, 2.6rem);
 		font-weight: 700;
 		letter-spacing: -0.03em;

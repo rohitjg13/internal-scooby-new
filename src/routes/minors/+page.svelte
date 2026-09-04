@@ -474,7 +474,6 @@
 {:else}
 	<main class="shelf">
 		<header class="top">
-			<a href="/" class="home-link" title="Back to Scooby home">←</a>
 			<div>
 				<h1>Minors</h1>
 				<p class="dept">{current.subtitle}</p>
@@ -631,28 +630,6 @@
 		align-items: center;
 		gap: 1rem;
 		margin-bottom: 2rem;
-	}
-
-	.home-link {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 36px;
-		height: 36px;
-		flex-shrink: 0;
-		border: 1px solid var(--border);
-		border-radius: var(--radius);
-		background: var(--bg-card);
-		color: var(--text-secondary);
-		text-decoration: none;
-		transition:
-			border-color 0.15s,
-			color 0.15s;
-	}
-
-	.home-link:hover {
-		border-color: var(--border-hover);
-		color: var(--text);
 	}
 
 	.controls {

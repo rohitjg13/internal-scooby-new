@@ -134,14 +134,6 @@
 {/snippet}
 
 <main class="clubs">
-	<header class="topbar">
-		<a href="/" class="home-link" title="Back to Scooby home"
-			><span class="brand">Scooby</span></a
-		>
-		<span class="sep">/</span>
-		<h1>Club Info</h1>
-	</header>
-
 	<div class="intro">
 		<p class="tagline">
 			Explore the cultural and technical clubs on campus — what they do
@@ -327,37 +319,6 @@
 		max-width: 1100px;
 		margin: 0 auto;
 		padding: 2.5rem 1.5rem 3rem;
-	}
-
-	.topbar {
-		display: flex;
-		align-items: baseline;
-		gap: 0.6rem;
-	}
-
-	.home-link {
-		text-decoration: none;
-		color: var(--text-secondary);
-		transition: color 0.15s;
-	}
-
-	.home-link:hover {
-		color: var(--text);
-	}
-
-	.brand {
-		font-size: 1.1rem;
-		font-weight: 600;
-		letter-spacing: -0.02em;
-	}
-
-	.sep {
-		color: var(--text-muted);
-	}
-
-	.topbar h1 {
-		font-size: 1.1rem;
-		font-weight: 600;
 	}
 
 	.intro {

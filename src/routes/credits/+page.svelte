@@ -8,8 +8,6 @@
 />
 
 <main class="credits">
-	<a href="/" class="back">← Home</a>
-
 	<header>
 		<h1>Credits</h1>
 		<p class="lede">
@@ -74,17 +72,6 @@
 		max-width: 940px;
 		margin: 0 auto;
 		padding: 2.5rem 1.25rem 3rem;
-	}
-
-	.back {
-		display: inline-block;
-		color: var(--text-secondary);
-		text-decoration: none;
-		font-size: 0.85rem;
-	}
-
-	.back:hover {
-		color: var(--text);
 	}
 
 	header {

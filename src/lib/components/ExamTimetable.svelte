@@ -329,14 +329,12 @@
 		<div class="center">
 			<h2>No Exam Timetable</h2>
 			<p class="muted">{error}</p>
-			<a href="/" class="btn primary">← Back to Timetable</a>
 		</div>
 	{:else}
 		<div class="app">
 			<!-- Header -->
 			<header class="header">
 				<div class="header-left">
-					<h1>Scooby</h1>
 					<span class="tag">Mid-Sem Exams</span>
 				</div>
 
@@ -431,7 +429,6 @@
 						</span>
 						Export Calendar
 					</button>
-					<a href="/" class="btn secondary">← Timetable</a>
 					<button class="btn" onclick={reset}>Reset</button>
 				</div>
 			</header>
@@ -580,11 +577,6 @@
 		display: flex;
 		align-items: center;
 		gap: 1rem;
-	}
-
-	.header h1 {
-		font-size: 1.25rem;
-		margin: 0;
 	}
 
 	.tag {
@@ -884,16 +876,6 @@
 	.btn:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
-	}
-
-	.btn.primary {
-		background: var(--accent);
-		border-color: var(--accent);
-		color: var(--accent-ink);
-	}
-
-	.btn.primary:hover {
-		background: var(--accent);
 	}
 
 	.btn.small {

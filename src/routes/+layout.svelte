@@ -1,33 +1,47 @@
 <script lang="ts">
 	import { onMount } from "svelte";
+	import { page } from "$app/state";
 	import "../app.css";
 	let { children } = $props();
 
-	// "" means no choice made: follow the system, which the CSS already does.
-	let theme = $state<"" | "light" | "dark">("");
+	// One nav for every page: "Scooby / <page>". Keyed by first path segment,
+	// so /minors/<slug> still reads "Minors". Home and /fill (a redirect
+	// shim) get none.
+	const TITLES: Record<string, string> = {
+		"academic-calendar": "Academic Calendar",
+		"attendance-calculator": "Attendance Calculator",
+		changes: "Timetable Changes",
+		clubs: "Club Info",
+		"collision-checker": "Timetable Planner",
+		credits: "Credits",
+		exam: "Exam Timetable",
+		gpa: "GPA Calculator",
+		minors: "Minors",
+		"room-switch": "Room Switch",
+	};
+
+	const title = $derived(TITLES[page.url.pathname.split("/")[1]]);
+
+	// Two states. Until you pick one, the CSS follows your system on its own —
+	// so the first render is right, and this only has to know which way the
+	// button should flip.
+	let theme = $state<"light" | "dark">("light");
 
 	onMount(() => {
 		const saved = localStorage.getItem("scooby:theme");
-		if (saved === "light" || saved === "dark") theme = saved;
+		theme =
+			saved === "light" || saved === "dark"
+				? saved
+				: matchMedia("(prefers-color-scheme: dark)").matches
+					? "dark"
+					: "light";
 	});
 
-	// System → Light → Dark → System. Cycling through all three keeps "follow
-	// my system" reachable instead of stranding you on an explicit choice.
-	const NEXT = { "": "light", light: "dark", dark: "" } as const;
-
-	function cycle() {
-		theme = NEXT[theme];
-		const root = document.documentElement;
-		if (theme) {
-			root.setAttribute("data-theme", theme);
-			localStorage.setItem("scooby:theme", theme);
-		} else {
-			root.removeAttribute("data-theme");
-			localStorage.removeItem("scooby:theme");
-		}
+	function toggle() {
+		theme = theme === "dark" ? "light" : "dark";
+		document.documentElement.setAttribute("data-theme", theme);
+		localStorage.setItem("scooby:theme", theme);
 	}
-
-	const LABEL = { "": "System", light: "Light", dark: "Dark" };
 </script>
 
 <svelte:head>
@@ -46,23 +60,33 @@
 </svelte:head>
 
 <div class="app-container">
+	<button
+		class="theme"
+		onclick={toggle}
+		title={theme === "dark" ? "Switch to light" : "Switch to dark"}
+		aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+	>
+		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+			{#if theme === "dark"}
+				<circle cx="12" cy="12" r="4" />
+				<path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" />
+			{:else}
+				<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" />
+			{/if}
+		</svg>
+	</button>
+
+	{#if title}
+		<nav class="topbar">
+			<a href="/">Scooby</a>
+			<span class="sep">/</span>
+			<span class="here">{title}</span>
+		</nav>
+	{/if}
+
 	{@render children()}
 
 	<footer class="footer">
-		<button class="theme" onclick={cycle} title="Switch theme">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
-				{#if theme === "dark"}
-					<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" />
-				{:else if theme === "light"}
-					<circle cx="12" cy="12" r="4" />
-					<path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4" />
-				{:else}
-					<circle cx="12" cy="12" r="8" />
-					<path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" stroke="none" />
-				{/if}
-			</svg>
-			{LABEL[theme]}
-		</button>
 		<span class="rule"></span>
 		<p>
 			Built and maintained by <a
@@ -82,6 +106,34 @@
 		flex-direction: column;
 	}
 
+	.topbar {
+		display: flex;
+		align-items: baseline;
+		gap: 0.6rem;
+		width: 100%;
+		max-width: 1100px;
+		margin: 0 auto;
+		padding: 1.5rem 1.5rem 0;
+		font-size: 1.1rem;
+		font-weight: 600;
+		letter-spacing: -0.02em;
+	}
+
+	.topbar a {
+		color: var(--text-secondary);
+		text-decoration: none;
+		transition: color 0.15s;
+	}
+
+	.topbar a:hover {
+		color: var(--text);
+	}
+
+	.sep {
+		color: var(--text-muted);
+		font-weight: 400;
+	}
+
 	.footer {
 		display: flex;
 		flex-direction: column;
@@ -93,18 +145,23 @@
 		font-size: 0.8rem;
 	}
 
+	/* Top right of every page. Below the modals, which sit at 1000+, so it
+	   can never float over a dialog. */
 	.theme {
+		position: fixed;
+		top: 0.6rem;
+		right: 0.6rem;
+		z-index: 90;
 		display: inline-flex;
 		align-items: center;
-		gap: 0.4rem;
-		margin: 0 auto 1.5rem;
-		padding: 0.4rem 0.85rem;
-		border: 1px solid var(--border);
-		border-radius: 6px;
+		justify-content: center;
+		width: 32px;
+		height: 32px;
+		padding: 0;
+		border: 2px solid var(--border);
+		border-radius: var(--radius-sm);
 		background: var(--bg-card);
 		color: var(--text-secondary);
-		font-family: inherit;
-		font-size: 0.78rem;
 		cursor: pointer;
 		transition:
 			color 0.15s,
@@ -117,8 +174,8 @@
 	}
 
 	.theme svg {
-		width: 14px;
-		height: 14px;
+		width: 16px;
+		height: 16px;
 	}
 
 	.rule {
