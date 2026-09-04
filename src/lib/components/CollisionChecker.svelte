@@ -1752,6 +1752,9 @@
 												<div
 													class="course-block"
 													class:added={block.isAdded}
+													class:compact={block.endMin -
+														block.startMin <
+														65}
 												style="top: {top}%; height: {height}%; min-height: 45px; left: calc({(100 /
 													block.cols) *
 													block.col}% + 2px); width: calc({100 / block.cols}% - 4px); --tint: {courseAccent(
@@ -3420,6 +3423,25 @@
 		border-top-color: var(--border-hover);
 		border-right-color: var(--border-hover);
 		border-bottom-color: var(--border-hover);
+	}
+
+	/* The grid is 1px per minute, so a 55-minute class is a 55px box. Four
+	   lines at a default line-height do not fit in it, and the name — the one
+	   thing you actually read — was the line that got clipped. */
+	.block-code,
+	.block-time,
+	.block-name,
+	.block-type {
+		line-height: 1.25;
+	}
+
+	/* Under ~65 minutes only the code and the name fit, so the two redundant
+	   lines go: the time is already given by the block's position against the
+	   gutter, and the component is already in the code chip as "(LEC)".
+	   Hovering still expands the block and brings them back. */
+	.course-block.compact:not(:hover) .block-time,
+	.course-block.compact:not(:hover) .block-type {
+		display: none;
 	}
 
 	.block-code {
