@@ -1755,7 +1755,7 @@
 													class:compact={block.endMin -
 														block.startMin <
 														65}
-												style="top: {top}%; height: {height}%; min-height: 45px; left: calc({(100 /
+												style="top: {top}%; height: {height}%; min-height: 48px; left: calc({(100 /
 													block.cols) *
 													block.col}% + 2px); width: calc({100 / block.cols}% - 4px); --tint: {courseAccent(
 													block.course,
@@ -1786,44 +1786,22 @@
 															>
 														{/if}
 													</span>
-													<span class="block-time"
-														>{block.course
-															.startTime}–{block
-															.course
-															.endTime}</span
-													>
 													<span class="block-name"
 														>{block.course
 															.courseName}</span
 													>
-													{#if block.course.courseType || block.course.component}
-														<span
-															class="block-type"
-														>
-															{block.course
-																.courseType}
-															{block.course
-																.courseType &&
-															block.course
-																.component
-																? " • "
-																: ""}
-															{block.course
-																.component}
-															{(block.course
-																.courseType ||
-																block.course
-																	.component) &&
-															block.course.room
-																? " • "
-																: ""}
-															{block.course.room}
+													<span class="block-meta">
+														{block.course.startTime}–{block
+															.course.endTime}{block
+															.course.room
+															? ` · ${block.course.room}`
+															: ""}
+													</span>
+													{#if block.course.courseType}
+														<span class="block-type">
+															{block.course.courseType}
 														</span>
 													{/if}
-													<!-- <span class="block-room"
-														>{block.course
-															.room}</span
-													> -->
 												</div>
 											{/each}
 										</div>
@@ -3410,8 +3388,7 @@
 	.course-block:hover .block-name,
 	.course-block:hover .block-code,
 	.course-block:hover .block-type,
-	.course-block:hover .block-time,
-	.course-block:hover .block-room {
+	.course-block:hover .block-meta {
 		white-space: normal;
 		overflow: visible;
 		word-break: break-word;
@@ -3425,21 +3402,20 @@
 		border-bottom-color: var(--border-hover);
 	}
 
-	/* The grid is 1px per minute, so a 55-minute class is a 55px box. Four
-	   lines at a default line-height do not fit in it, and the name — the one
-	   thing you actually read — was the line that got clipped. */
+	/* The grid is 1px per minute, so a 55-minute class is a 55px box — which
+	   is three tight lines and no more. Code, name, then time and room
+	   together: everything you need off a glance, and everything that has to
+	   survive an exported image, where nothing is ever hovered. */
 	.block-code,
-	.block-time,
+	.block-meta,
 	.block-name,
 	.block-type {
 		line-height: 1.25;
 	}
 
-	/* Under ~65 minutes only the code and the name fit, so the two redundant
-	   lines go: the time is already given by the block's position against the
-	   gutter, and the component is already in the code chip as "(LEC)".
-	   Hovering still expands the block and brings them back. */
-	.course-block.compact:not(:hover) .block-time,
+	/* The fourth line is the course type ("Major", "UWE"), which is the least
+	   useful of them and the only one that does not fit in a short block.
+	   Hovering expands the block and brings it back. */
 	.course-block.compact:not(:hover) .block-type {
 		display: none;
 	}
@@ -3453,11 +3429,13 @@
 		text-overflow: ellipsis;
 	}
 
-	.block-time {
+	.block-meta {
 		font-family: "SF Mono", monospace;
 		font-size: 0.6rem;
 		color: var(--text-muted);
 		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.block-name {
@@ -3472,11 +3450,6 @@
 		font-size: 0.6rem;
 		color: var(--text-muted);
 		font-style: italic;
-	}
-
-	.block-room {
-		font-size: 0.6rem;
-		color: var(--text-muted);
 	}
 
 	/* Lists */
