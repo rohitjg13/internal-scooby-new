@@ -381,17 +381,7 @@
 
 <main class="dash">
 	<header class="head">
-		<div class="brand">
-			<span class="mark" aria-hidden="true">
-				<svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
-					<path d="M18 20h28" stroke="currentColor" stroke-width="5" stroke-linecap="round" opacity=".5" />
-					<path d="M32 20v9" stroke="currentColor" stroke-width="5" stroke-linecap="round" opacity=".5" />
-					<circle cx="32" cy="42" r="13" fill="currentColor" />
-					<circle cx="32" cy="42" r="4.5" fill="var(--accent)" />
-				</svg>
-			</span>
-			<h1>Scooby</h1>
-		</div>
+		<h1>Scooby</h1>
 		<p class="greeting">{greeting} · {dateLine}</p>
 	</header>
 
@@ -650,28 +640,6 @@
 		flex-wrap: wrap;
 		padding-bottom: 0.85rem;
 		border-bottom: 3px solid var(--text);
-	}
-
-	.brand {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.mark {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 30px;
-		height: 30px;
-		border-radius: var(--radius-sm);
-		background: var(--accent);
-		color: var(--accent-ink);
-	}
-
-	.mark svg {
-		width: 19px;
-		height: 19px;
 	}
 
 	.head h1 {
