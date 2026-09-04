@@ -8,6 +8,7 @@
 		myCourses,
 		classesOn,
 		dayName,
+		nextDayWithClasses,
 		nowMinutes,
 		type ClassSlot,
 	} from "$lib/mySchedule";
@@ -100,13 +101,30 @@
 	const today = $derived(dayName(now));
 	const mins = $derived(nowMinutes(now));
 
-	/* ---- today's classes ---- */
+	/* ---- your classes ---- */
 	let planLoaded = $state(false);
 	let hasPlan = $state(false);
-	let todays = $state<ClassSlot[]>([]);
+	// Every class row that is yours, so any day can be read off it — not just
+	// today's, which is what the panel used to hold.
+	let myClasses = $state<Course[]>([]);
 
+	const todays = $derived(today ? classesOn(myClasses, today) : []);
 	const next = $derived(todays.find((c) => c.end > mins) ?? null);
 	const done = $derived(todays.filter((c) => c.end <= mins).length);
+
+	/**
+	 * Once today is spent, the useful thing is the next day that actually has
+	 * classes — which is tomorrow most of the time, but skips a Sunday or an
+	 * empty Saturday rather than showing an empty panel.
+	 */
+	const ahead = $derived(
+		next || !myClasses.length ? null : nextDayWithClasses(myClasses, now),
+	);
+
+	// Which day the side panel is showing, and what it holds.
+	const panel = $derived(
+		next || !ahead ? { label: "Today", classes: todays } : { label: ahead.label, classes: ahead.classes },
+	);
 
 	// A class already running: what you want is when you get out, not that it
 	// started.
@@ -280,13 +298,13 @@
 
 		const plan = loadPlan();
 		hasPlan = plan.batches.length > 0 || plan.selected.length > 0;
-		if (!hasPlan || !today) {
+		if (!hasPlan) {
 			planLoaded = true;
 		} else {
 			fetch("/api/timetable?v=2")
 				.then((r) => r.json())
 				.then((d: { courses?: Course[] }) => {
-					if (d.courses) todays = classesOn(myCourses(d.courses, plan), today);
+					if (d.courses) myClasses = myCourses(d.courses, plan);
 				})
 				.catch(() => {})
 				.finally(() => (planLoaded = true));
@@ -380,19 +398,15 @@
 	<!-- Up next, and the shape of the rest of the day. -->
 	<section class="today" style="--h: var(--hue-purple)">
 		<div class="up-next">
-			<span class="tag">{running ? "In class" : "Up next"}</span>
+			<span class="tag">
+				{running ? "In class" : ahead ? ahead.label : "Up next"}
+			</span>
 
 			{#if !planLoaded}
 				<p class="big">One sec…</p>
 			{:else if !hasPlan}
 				<p class="big">No timetable yet</p>
 				<a class="cta" href="/collision-checker">Build one →</a>
-			{:else if !today}
-				<p class="big">It's Sunday 🌤</p>
-				<span class="big-sub">Nothing timetabled.</span>
-			{:else if !todays.length}
-				<p class="big">Nothing today 🎉</p>
-				<span class="big-sub">Not a single class.</span>
 			{:else if next}
 				<a class="next-link" href="/collision-checker">
 					<span class="next-time">{minutesToTime(next.start)}</span>
@@ -400,16 +414,55 @@
 					<span class="next-name">{next.courseName}</span>
 					<span class="next-meta">{next.courseCode} · {next.room || "Room TBA"}</span>
 				</a>
+			{:else if ahead}
+				<!-- Today is spent, so the hero rolls forward rather than sitting
+				     empty on a celebration. -->
+				<span class="done-note">
+					{today && todays.length
+						? "Done for today 🎉"
+						: today
+							? "Nothing on today 🎉"
+							: "Sunday 🌤"}
+				</span>
+				<a class="next-link" href="/collision-checker">
+					<span class="next-time">{minutesToTime(ahead.classes[0].start)}</span>
+					<span class="next-until">
+						{ahead.label === "Tomorrow" ? "tomorrow" : ahead.label.toLowerCase()},
+						{ahead.classes.length}
+						{ahead.classes.length === 1 ? "class" : "classes"}
+					</span>
+					<span class="next-name">{ahead.classes[0].courseName}</span>
+					<span class="next-meta">
+						{ahead.classes[0].courseCode} · {ahead.classes[0].room || "Room TBA"}
+					</span>
+				</a>
+			{:else if !today}
+				<p class="big">It's Sunday 🌤</p>
+				<span class="big-sub">Nothing timetabled.</span>
+			{:else if !todays.length}
+				<p class="big">Nothing today 🎉</p>
+				<span class="big-sub">Not a single class.</span>
 			{:else}
 				<p class="big">You're done 🎉</p>
 				<span class="big-sub">That was the last one today.</span>
 			{/if}
 		</div>
 
-		{#if todays.length}
+		{#if panel.classes.length}
 			<ol class="timeline">
-				{#each todays as c, i}
-					<li class:past={c.end <= mins} class:current={c === next}>
+				<li class="tl-head">
+					<span class="label">{panel.label}</span>
+					{#if panel.label === "Today"}
+						<span class="tl-count">{done}/{panel.classes.length} done</span>
+					{:else}
+						<span class="tl-count">{panel.classes.length} classes</span>
+					{/if}
+				</li>
+				{#each panel.classes as c, i}
+					<li
+						class:past={panel.label === "Today" && c.end <= mins}
+						class:current={c === next}
+					>
 						<span class="dot" style="--h: var(--hue-{HUES[i % HUES.length]})"></span>
 						<span class="tl-time">{minutesToTime(c.start)}</span>
 						<span class="tl-name">{c.courseName}</span>
@@ -739,6 +792,13 @@
 		line-height: 1.1;
 	}
 
+	.done-note {
+		margin-top: 0.7rem;
+		font-size: 0.9rem;
+		font-weight: 700;
+		letter-spacing: -0.01em;
+	}
+
 	.big-sub {
 		font-size: 0.78rem;
 		opacity: 0.85;
@@ -807,6 +867,22 @@
 		border: 2px solid var(--border);
 		border-radius: var(--radius);
 		background: var(--bg-card);
+	}
+
+	/* Specific enough to beat `.timeline li` below without !important. */
+	.timeline li.tl-head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		padding: 0.1rem 0.35rem 0.4rem;
+		border-bottom: 1px solid var(--border);
+		margin-bottom: 0.25rem;
+	}
+
+	.tl-count {
+		font-family: var(--font-mono);
+		font-size: 0.63rem;
+		color: var(--text-muted);
 	}
 
 	.timeline li {

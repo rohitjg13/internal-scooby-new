@@ -84,3 +84,24 @@ export function classesOn(courses: Course[], day: string): ClassSlot[] {
 export const dayName = (d = new Date()) => DAYS[d.getDay() - 1] ?? '';
 
 export const nowMinutes = (d = new Date()) => d.getHours() * 60 + d.getMinutes();
+
+/**
+ * The next day from `now` that actually has classes, looking a week ahead.
+ * Usually tomorrow, but a Sunday or an empty Saturday is skipped rather than
+ * handing back an empty day — and the label says which day it really is, so
+ * "Tomorrow" is never a lie.
+ */
+export function nextDayWithClasses(
+	courses: Course[],
+	now = new Date()
+): { label: string; day: string; classes: ClassSlot[] } | null {
+	for (let i = 1; i <= 7; i++) {
+		const d = new Date(now);
+		d.setDate(now.getDate() + i);
+		const day = dayName(d);
+		if (!day) continue;
+		const classes = classesOn(courses, day);
+		if (classes.length) return { label: i === 1 ? 'Tomorrow' : day, day, classes };
+	}
+	return null;
+}

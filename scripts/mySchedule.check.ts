@@ -1,7 +1,13 @@
 // Runnable self-check for the dashboard's schedule resolution. No framework.
 //   node scripts/mySchedule.check.ts
 import assert from "node:assert";
-import { myCourses, classesOn, dayName, type SavedPlan } from "../src/lib/mySchedule.ts";
+import {
+	myCourses,
+	classesOn,
+	dayName,
+	nextDayWithClasses,
+	type SavedPlan
+} from "../src/lib/mySchedule.ts";
 import type { Course } from "../src/lib/types.ts";
 
 const row = (c: Partial<Course>): Course => ({
@@ -95,5 +101,50 @@ assert.deepStrictEqual(
 assert.strictEqual(dayName(new Date(2026, 8, 6)), "");
 assert.strictEqual(dayName(new Date(2026, 8, 7)), "Monday");
 assert.strictEqual(dayName(new Date(2026, 8, 12)), "Saturday");
+
+// --- looking ahead once today is spent ---------------------------------
+// The fixture runs Mon/Tue/Wed only, so Thursday through Sunday are empty.
+const week = myCourses(all, plan());
+
+// Sep 2026: the 7th is a Monday.
+const monday = new Date(2026, 8, 7);
+const tuesday = new Date(2026, 8, 8);
+const wednesday = new Date(2026, 8, 9);
+const thursday = new Date(2026, 8, 10);
+const sunday = new Date(2026, 8, 13);
+
+// The day after a teaching day is "Tomorrow" and carries that day's classes.
+const fromMon = nextDayWithClasses(week, monday)!;
+assert.strictEqual(fromMon.label, "Tomorrow");
+assert.strictEqual(fromMon.day, "Tuesday");
+assert.deepStrictEqual(
+	fromMon.classes.map((c) => c.courseCode),
+	["CSD102-LEC1"]
+);
+
+// The fixture teaches Mon-Thu, so Friday and Saturday are empty. From
+// Thursday the next teaching day is Monday, four days off — it must say
+// "Monday", because calling an empty Friday "Tomorrow" would be the bug.
+const fromThu = nextDayWithClasses(week, thursday)!;
+assert.strictEqual(fromThu.label, "Monday");
+assert.strictEqual(fromThu.day, "Monday");
+assert.ok(fromThu.classes.length > 1);
+
+// Wednesday still has a Thursday to hand back.
+const fromWed = nextDayWithClasses(week, wednesday)!;
+assert.strictEqual(fromWed.label, "Tomorrow");
+assert.strictEqual(fromWed.day, "Thursday");
+
+// Friday and Saturday skip the empty days and Sunday entirely; Sunday itself
+// is never offered as a destination.
+assert.strictEqual(nextDayWithClasses(week, new Date(2026, 8, 11))!.day, "Monday");
+assert.strictEqual(nextDayWithClasses(week, new Date(2026, 8, 12))!.day, "Monday");
+assert.strictEqual(nextDayWithClasses(week, sunday)!.label, "Tomorrow");
+assert.strictEqual(nextDayWithClasses(week, tuesday)!.day, "Wednesday");
+
+// Sorted within the day, and a timetable with nothing in it looks ahead to
+// nothing rather than throwing.
+assert.ok(fromThu.classes.every((c, i, a) => i === 0 || a[i - 1].start <= c.start));
+assert.strictEqual(nextDayWithClasses([], monday), null);
 
 console.log("mySchedule: ok");
