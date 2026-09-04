@@ -62,10 +62,15 @@ function categorise(text: string): Category {
 	return 'event';
 }
 
-// Entries the printed PDF gets wrong, dropped as if the cell were blank.
-// Comment a line out (or delete it) once a newer calendar prints it correctly —
-// this is the only place anything about a specific calendar is hard-coded.
-const OMIT: RegExp[] = [/last date to drop full semester UG courses/i];
+// Entries and notes the printed PDF gets wrong or that say nothing useful,
+// dropped as if the cell were blank. Comment a line out (or delete it) once a
+// newer calendar prints it correctly — this is the only place anything about a
+// specific calendar is hard-coded.
+const OMIT: RegExp[] = [
+	/last date to drop full semester UG courses/i,
+	// Says a date will be announced later, which is not a date.
+	/self-course registration dates will be announced/i
+];
 
 const area = (f: Fill) => (f.x1 - f.x0) * (f.y1 - f.y0);
 
@@ -179,7 +184,10 @@ export function parseAcademicCalendar(items: TextItem[], fills: Fill[] = []): Ac
 	days.sort((a, b) => a.date.localeCompare(b.date));
 
 	const title = text.filter((i) => i.y > top).sort((a, b) => b.y - a.y)[0]?.str ?? 'Academic Calendar';
-	const notes = text.filter((i) => i.y < bottom && /^note[:\s]/i.test(i.str)).map((i) => i.str);
+	const notes = text
+		.filter((i) => i.y < bottom && /^note[:\s]/i.test(i.str))
+		.map((i) => i.str)
+		.filter((n) => !OMIT.some((re) => re.test(n)));
 
 	const key = [...legend.values()].map((label) => ({ label, category: categorise(label) }));
 
