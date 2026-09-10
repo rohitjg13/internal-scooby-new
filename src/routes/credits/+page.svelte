@@ -128,7 +128,8 @@
 
 	.lead .tag,
 	.lead .role {
-		color: rgba(8, 8, 10, 0.55);
+		color: var(--bg);
+		opacity: 0.55;
 	}
 
 	.lead h2 {
@@ -137,7 +138,8 @@
 
 	.lead .blurb {
 		max-width: 54ch;
-		color: rgba(8, 8, 10, 0.72);
+		color: var(--bg);
+		opacity: 0.72;
 	}
 
 	.link {
