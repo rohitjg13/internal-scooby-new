@@ -5,14 +5,13 @@
 	let { children } = $props();
 
 	// One nav for every page: "Scooby / <page>". Keyed by first path segment,
-	// so /minors/<slug> still reads "Minors". Home and /fill (a redirect
-	// shim) get none.
+	// so /minors/<slug> still reads "Minors". Home, /fill (a redirect shim)
+	// and the planner (its own 1400px header) get none.
 	const TITLES: Record<string, string> = {
 		"academic-calendar": "Academic Calendar",
 		"attendance-calculator": "Attendance Calculator",
 		changes: "Timetable Changes",
 		clubs: "Club Info",
-		"collision-checker": "Timetable Planner",
 		credits: "Credits",
 		exam: "Exam Timetable",
 		gpa: "GPA Calculator",
@@ -106,17 +105,17 @@
 		flex-direction: column;
 	}
 
+	/* Full-bleed so it reads as page chrome. A centred bar would have to pick
+	   one column width, and the pages under it don't agree on one. */
 	.topbar {
 		display: flex;
 		align-items: baseline;
-		gap: 0.6rem;
-		width: 100%;
-		max-width: 1100px;
-		margin: 0 auto;
-		padding: 1.5rem 1.5rem 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		letter-spacing: -0.02em;
+		gap: 0.5rem;
+		padding: 0.85rem 1.5rem;
+		border-bottom: 1px solid var(--border);
+		font-size: 0.9rem;
+		font-weight: 500;
+		letter-spacing: -0.01em;
 	}
 
 	.topbar a {
@@ -132,6 +131,10 @@
 	.sep {
 		color: var(--text-muted);
 		font-weight: 400;
+	}
+
+	.here {
+		color: var(--text);
 	}
 
 	.footer {

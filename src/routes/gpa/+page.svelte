@@ -301,7 +301,7 @@
 		width: 100%;
 		max-width: 900px;
 		margin: 0 auto;
-		padding: 2.5rem 1.25rem 3rem;
+		padding: 1.75rem 1.25rem 3rem;
 	}
 
 	/* Score strip */

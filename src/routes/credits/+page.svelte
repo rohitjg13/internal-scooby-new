@@ -71,11 +71,11 @@
 		width: 100%;
 		max-width: 940px;
 		margin: 0 auto;
-		padding: 2.5rem 1.25rem 3rem;
+		padding: 1.75rem 1.25rem 3rem;
 	}
 
 	header {
-		padding: 2.75rem 0 2rem;
+		padding: 1.5rem 0 2rem;
 	}
 
 	h1 {

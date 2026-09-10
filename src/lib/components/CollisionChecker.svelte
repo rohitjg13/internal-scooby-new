@@ -1547,6 +1547,9 @@
 					onclick={() => ((skipBatch = true), (showNonUWE = true))}
 					>Continue without a batch →</button
 				>
+				<div class="batch-form-footer">
+					<a href="/" class="btn secondary">← Home</a>
+				</div>
 			</div>
 		</div>
 	{:else}
@@ -1554,6 +1557,9 @@
 			<!-- Header -->
 			<header class="header">
 				<div class="header-left">
+					<a href="/" class="home-link" title="Back to Scooby home"
+						><h1>Scooby</h1></a
+					>
 					<div class="tags-row">
 						{#each $currentBatches as batch}
 							<span class="tag">{batch}</span>
@@ -3084,6 +3090,28 @@
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
+	}
+
+	.home-link {
+		text-decoration: none;
+		color: inherit;
+		transition: opacity 0.15s;
+	}
+
+	.home-link:hover {
+		opacity: 0.7;
+	}
+
+	.header h1 {
+		font-size: 1.25rem;
+		font-weight: 500;
+	}
+
+	.batch-form-footer {
+		margin-top: 1.5rem;
+		padding-top: 1.5rem;
+		border-top: 1px solid var(--border);
+		text-align: center;
 	}
 
 	.tag {

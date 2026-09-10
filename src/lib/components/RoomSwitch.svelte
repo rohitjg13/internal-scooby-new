@@ -455,7 +455,7 @@
 		align-items: center;
 		gap: 1.25rem;
 		text-align: center;
-		padding: 3rem 1.5rem;
+		padding: 2rem 1.5rem;
 		border: 1px solid var(--border);
 		border-radius: 14px;
 		background: var(--bg-card);
