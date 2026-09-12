@@ -1,16 +1,13 @@
 <script lang="ts">
 	import Seo from "$lib/components/Seo.svelte";
 	import { newCourse, stats, statsFor, courseTotals, type Course } from "$lib/attendance";
-	import {
-		remainingDays,
-		totalDays,
-		WEEKDAYS,
-		DAY_NAMES,
-		SEM_START
-	} from "$lib/semester";
+	import { remainingDays, totalDays, WEEKDAYS, DAY_NAMES } from "$lib/semester";
+	import type { PageData } from "./$types";
+
+	let { data }: { data: PageData } = $props();
 
 	const KEY = "scooby.attendance";
-	const PRESETS = [75, 70, 65, 50];
+	const PRESETS = [70, 45, 65];
 
 	let courses = $state<Course[]>([newCourse()]);
 	let target = $state(75);
@@ -38,11 +35,13 @@
 	});
 
 	const fmt = (n: number) => n.toFixed(1);
+	/** ISO dates are for storing, DD/MM/YYYY is for reading */
+	const dmy = (iso: string) => (iso ? iso.split("-").reverse().join("/") : "");
 	// counts stay classes until some component says a class is worth more than an hour
 	const unit = (c: Course) => (c.components.every((k) => k.hrs === 1) ? "" : " hrs");
 
 	// teaching days left, and how many of them are yours
-	const left = remainingDays();
+	const left = $derived(remainingDays(data.semester));
 	let picked = $state<number[]>([]);
 	const myDays = $derived(picked.reduce((n, d) => n + left[d], 0));
 
@@ -119,7 +118,7 @@
 			<span class="sem-count">{totalDays(left)}</span>
 			<span class="sem-label">
 				teaching days left this semester
-				<span class="sem-sub">since {SEM_START}</span>
+				<span class="sem-sub">of {dmy(data.semester.start)} – {dmy(data.semester.end)}</span>
 			</span>
 		</div>
 

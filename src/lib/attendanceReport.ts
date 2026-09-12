@@ -10,7 +10,7 @@
 // section and carries one status per date, in order.
 
 import { COMPONENTS, type Component, type ComponentType } from "./attendance.ts";
-import { remainingDays, SEM_START, WEEKDAYS } from "./semester.ts";
+import { remainingDays, WEEKDAYS, type Semester } from "./semester.ts";
 
 /** University-wide attendance waiver: everything up to here is credited. */
 export const FORGIVE_UNTIL = "2026-09-07";
@@ -62,7 +62,7 @@ function componentOf(section: string): ComponentType {
  * "17 Aug-1" carries no year. The semester start gives it one: anything in a
  * month before the starting month has rolled over into the next year.
  */
-function sessionDate(raw: string, start = SEM_START): Date | null {
+function sessionDate(raw: string, start: string): Date | null {
 	const m = DATE_LINE.exec(raw);
 	if (!m) return null;
 	const month = MONTHS.indexOf(m[2].toLowerCase());
@@ -71,7 +71,7 @@ function sessionDate(raw: string, start = SEM_START): Date | null {
 	return new Date(month < sm - 1 ? sy + 1 : sy, month, Number(m[1]));
 }
 
-export function parseReport(text: string): Row[] {
+export function parseReport(text: string, start: string): Row[] {
 	const rows: Row[] = [];
 	let dates: string[] = [];
 
@@ -98,7 +98,7 @@ export function parseReport(text: string): Row[] {
 			type: componentOf(m[2]),
 			sessions: cells.map((c, i) => ({
 				raw: dates[i] ?? "",
-				date: dates[i] ? sessionDate(dates[i]) : null,
+				date: dates[i] ? sessionDate(dates[i], start) : null,
 				status: STATUS[c.toUpperCase()]
 			}))
 		});
@@ -119,8 +119,33 @@ export function weekdaysOf(sessions: Session[]): number[] {
  * Classes still to come: one per remaining occurrence of each weekday the
  * component meets on — the same sum the other calculator's day picker does.
  */
-export const classesLeft = (days: number[], left = remainingDays()) =>
+export const classesLeft = (days: number[], left: Record<number, number>) =>
 	days.reduce((n, d) => n + (left[d] ?? 0), 0);
+
+/**
+ * Classes the calendar says were held before the report's first entry for this
+ * component. The report only starts where the portal started recording, but
+ * the course started when the semester did, so those sit in nobody's column.
+ * They're inside the waiver window by definition of being early, so the waiver
+ * credits them — and the cut-off keeps them from being invented for a course
+ * that genuinely began later in the term.
+ */
+export function backfillCount(
+	sessions: Session[],
+	days: number[],
+	sem: Semester,
+	forgiveUntil: Date | null
+): number {
+	if (!days.length || !forgiveUntil) return 0;
+	const first = sessions.map((s) => s.date).filter(Boolean) as Date[];
+	if (!first.length) return 0;
+	const earliest = new Date(Math.min(...first.map((d) => d.getTime()))).toLocaleDateString("en-CA");
+	const until = forgiveUntil.toLocaleDateString("en-CA");
+
+	return sem.days.filter(
+		(d) => d.date < earliest && d.date <= until && days.includes(d.weekday)
+	).length;
+}
 
 /** Absences on or before the waiver date are credited as attended. */
 export function countSessions(sessions: Session[], forgiveUntil: Date | null) {
@@ -142,7 +167,11 @@ export function countSessions(sessions: Session[], forgiveUntil: Date | null) {
 }
 
 /** A component plus the weekdays it meets on, which is what "left" is counted from. */
-export type ParsedComponent = Component & { days: number[] };
+export type ParsedComponent = Component & {
+	days: number[];
+	/** classes the calendar says were held before the report's first entry */
+	backfilled: number;
+};
 
 // Not `Course & {…}`: intersecting the two component arrays loses `days` when
 // you map over them. This is structurally a Course, which is all stats() wants.
@@ -152,6 +181,8 @@ export type ParsedCourse = {
 	components: ParsedComponent[];
 	/** absences the waiver turned into attendance, for the "credited" line */
 	forgiven: number;
+	/** classes credited because they predate what the report shows at all */
+	backfilled: number;
 	sections: string[];
 };
 
@@ -159,14 +190,17 @@ export type ParsedCourse = {
 export function toCourses(
 	rows: Row[],
 	forgiveUntil: Date | null,
-	left = remainingDays()
+	sem: Semester,
+	backfill = true
 ): ParsedCourse[] {
+	const left = remainingDays(sem);
 	const byCode = new Map<string, Row[]>();
 	for (const r of rows) byCode.set(r.code, [...(byCode.get(r.code) ?? []), r]);
 
 	return [...byCode].map(([code, rs]) => {
 		const components: ParsedComponent[] = [];
 		let forgiven = 0;
+		let backfilled = 0;
 
 		for (const type of COMPONENTS) {
 			const mine = rs.filter((r) => r.type === type);
@@ -174,13 +208,16 @@ export function toCourses(
 			const sessions = mine.flatMap((r) => r.sessions);
 			const c = countSessions(sessions, forgiveUntil);
 			const days = weekdaysOf(sessions);
+			const early = backfill ? backfillCount(sessions, days, sem, forgiveUntil) : 0;
 			forgiven += c.forgiven;
+			backfilled += early;
 			components.push({
 				type,
-				attended: c.attended,
+				attended: c.attended + early,
 				missed: c.missed,
 				leaves: c.leaves,
 				days,
+				backfilled: early,
 				remaining: classesLeft(days, left),
 				hrs: 1
 			});
@@ -191,6 +228,7 @@ export function toCourses(
 			name: code,
 			components,
 			forgiven,
+			backfilled,
 			sections: rs.map((r) => r.section)
 		};
 	});

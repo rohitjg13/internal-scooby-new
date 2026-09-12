@@ -15,7 +15,10 @@
 	import { loadState as loadGpa } from "$lib/gpa/storage";
 	import { computeCGPA, cgpaFromSgpa } from "$lib/gpa/calculator";
 	import { stats as attStats, type Course as AttCourse } from "$lib/attendance";
-	import { remainingDays, totalDays, TEACHING_DAYS, WEEKDAYS } from "$lib/semester";
+	import { remainingDays, totalDays, countBy } from "$lib/semester";
+	import type { PageData } from "./$types";
+
+	let { data }: { data: PageData } = $props();
 	import {
 		loadTracker,
 		findMinors,
@@ -217,8 +220,8 @@
 	]);
 
 	const semLeft = $derived.by(() => {
-		const left = remainingDays(now);
-		const total = WEEKDAYS.reduce((n, d) => n + TEACHING_DAYS[d], 0);
+		const left = remainingDays(data.semester, now);
+		const total = totalDays(countBy(data.semester.days));
 		const rem = totalDays(left);
 		return { rem, total, pct: total ? ((total - rem) / total) * 100 : 0 };
 	});

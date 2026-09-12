@@ -7,12 +7,16 @@
 		classesLeft,
 		parseForgiveDate,
 		FORGIVE_UNTIL,
-		type ParsedCourse
+		type ParsedCourse,
+		type ParsedComponent
 	} from "$lib/attendanceReport";
-	import { remainingDays, totalDays, WEEKDAYS, DAY_NAMES, SEM_START } from "$lib/semester";
+	import { remainingDays, totalDays, WEEKDAYS, DAY_NAMES } from "$lib/semester";
+	import type { PageData } from "./$types";
+
+	let { data }: { data: PageData } = $props();
 
 	const KEY = "scooby.attendance.paste";
-	const PRESETS = [75, 70, 65, 50];
+	const PRESETS = [70, 45, 65];
 
 	/** ISO dates are for storing, DD/MM/YYYY is for reading */
 	const dmy = (iso: string) => (iso ? iso.split("-").reverse().join("/") : "");
@@ -39,10 +43,12 @@
 	let hours = $state<Record<string, number>>({});
 	/** "ECE301/LEC/attended" → what you typed over the report's own count */
 	let counts = $state<Record<string, number>>({});
+	/** credit the classes held before the report's first entry */
+	let backfill = $state(true);
 	/** which pickers you've opened or closed by hand; the rest follow hasHrs */
 	let opened = $state<Record<string, boolean>>({});
 
-	const left = remainingDays();
+	const left = $derived(remainingDays(data.semester));
 	const key = (id: string, type: ComponentType) => `${id}/${type}`;
 	const HOURS = [1, 1.5, 2, 3];
 	const COUNTS = ["attended", "missed", "leaves", "remaining"] as const;
@@ -70,18 +76,21 @@
 			if (v.shape && typeof v.shape === "object") shape = v.shape;
 			if (v.hours && typeof v.hours === "object") hours = v.hours;
 			if (v.counts && typeof v.counts === "object") counts = v.counts;
+			if (typeof v.backfill === "boolean") backfill = v.backfill;
 		} catch {
 			// corrupt blob, start clean
 		}
 	});
 
 	$effect(() => {
-		localStorage.setItem(KEY, JSON.stringify({ raw, target, waiver, picks, shape, hours, counts }));
+		localStorage.setItem(KEY, JSON.stringify({ raw, target, waiver, picks, shape, hours, counts, backfill }));
 	});
 
 	const forgiveUntil = $derived(isoOf(waiver));
-	const rows = $derived(parseReport(raw));
-	const parsed = $derived(toCourses(rows, parseForgiveDate(forgiveUntil)));
+	const rows = $derived(parseReport(raw, data.semester.start));
+	const parsed = $derived(
+		toCourses(rows, parseForgiveDate(forgiveUntil), data.semester, backfill)
+	);
 	// The report is the starting point: which components a course has, and which
 	// weekdays each meets on. Both are yours to change — a tutorial the report
 	// doesn't track, a practical you don't have. "Left" follows from the days.
@@ -92,14 +101,15 @@
 			return {
 				...c,
 				components: COMPONENTS.filter((t) => types.includes(t)).map((t) => {
-					const base = parsedComps.get(t) ?? {
+					const base: ParsedComponent = parsedComps.get(t) ?? {
 						type: t,
 						attended: 0,
 						missed: 0,
 						leaves: 0,
 						remaining: 0,
 						hrs: 1,
-						days: []
+						days: [],
+						backfilled: 0
 					};
 					const days = picks[key(c.id, t)] ?? base.days;
 					return {
@@ -117,6 +127,7 @@
 	);
 
 	const forgiven = $derived(courses.reduce((n, c) => n + c.forgiven, 0));
+	const filled = $derived(courses.reduce((n, c) => n + c.backfilled, 0));
 	const set = $derived(courses.filter(ready));
 	const below = $derived(
 		set.filter((c) => {
@@ -255,6 +266,14 @@
 				</button>
 			{/if}
 		</span>
+
+		{#if waiver}
+			<span class="bar-sep"></span>
+			<label class="bar-group check">
+				<input type="checkbox" bind:checked={backfill} />
+				Credit classes before the report starts
+			</label>
+		{/if}
 	</div>
 
 	{#if courses.length}
@@ -276,8 +295,13 @@
 				<span class="tally-label">
 					courses at or above {target}%
 					<span class="tally-sub">
-						{forgiven} absence{forgiven === 1 ? "" : "s"} credited ·
-						{totalDays(left)} teaching days left since {dmy(SEM_START)}
+						{forgiven} absence{forgiven === 1 ? "" : "s"} credited{#if filled}, {filled} class{filled ===
+							1
+								? ""
+								: "es"} added before the report starts{/if} ·
+						{totalDays(left)} teaching days left of {dmy(data.semester.start)} – {dmy(
+							data.semester.end
+						)}
 					</span>
 				</span>
 			{/if}
@@ -478,6 +502,15 @@
 
 	<div class="note">
 		<p>
+			<b>Credit classes before the report starts</b> — the portal only shows a
+			course from whenever it began recording, but the course itself started when
+			the semester did. This counts the calendar's teaching days on that
+			component's own weekdays, from the first day of classes up to whenever its
+			report begins, as attended. It stops at the waiver date, so a course that
+			genuinely started later in the term doesn't collect classes it never held.
+			Turn it off if your course did start late.
+		</p>
+		<p>
 			<b>Left</b> comes from the days under each component: the report's own
 			dates say which weekdays it has met on, and the academic calendar says how
 			many of those are still to come. Open <b>change days</b> to add or drop one,
@@ -617,6 +650,16 @@
 		display: flex;
 		align-items: center;
 		gap: 0.4rem;
+	}
+
+	.check {
+		gap: 0.35rem;
+		cursor: pointer;
+	}
+
+	.check input {
+		accent-color: var(--text);
+		cursor: pointer;
 	}
 
 	.bar-sep {
@@ -1059,7 +1102,17 @@
 			gap: 0.5rem;
 		}
 
-		.bar-sep {
+		.check {
+		gap: 0.35rem;
+		cursor: pointer;
+	}
+
+	.check input {
+		accent-color: var(--text);
+		cursor: pointer;
+	}
+
+	.bar-sep {
 			display: none;
 		}
 

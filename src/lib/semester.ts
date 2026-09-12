@@ -1,15 +1,10 @@
-// Teaching days left in the semester.
-// The per-weekday totals are the instructional days the academic calendar
-// actually holds (they differ because of holidays), so they're a given, not
-// something we can count off a calendar. What we do count is how many of each
-// weekday have already gone by since the semester started.
-// ponytail: update these two constants each semester — a calendar-file parser
-// would be a lot of code for six numbers and a date.
-
-export const SEM_START = "2026-08-17"; // Monday
-
-/** keyed by Date#getDay(): 1 = Monday … 6 = Saturday */
-export const TEACHING_DAYS: Record<number, number> = { 1: 13, 2: 13, 3: 14, 4: 14, 5: 13, 6: 12 };
+// Teaching days, counted off the academic calendar rather than typed in.
+// The calendar PDF names the day classes start, the day they stop, and every
+// holiday, exam and break in between, so the per-weekday totals are something
+// we can derive — and they re-derive themselves when a newer PDF is dropped in.
+//
+// Building the list is server work (the PDF is parsed at build time); counting
+// what's left of it is the browser's, since only the browser knows "today".
 
 export const DAY_NAMES: Record<number, string> = {
 	1: "Mon",
@@ -22,29 +17,83 @@ export const DAY_NAMES: Record<number, string> = {
 
 export const WEEKDAYS = [1, 2, 3, 4, 5, 6];
 
-const midnight = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+/** One instructional day: the date, and whose timetable actually runs on it. */
+export type TeachingDay = {
+	/** ISO date, e.g. "2026-08-17" */
+	date: string;
+	/** Date#getDay() of the schedule being followed — usually the date's own
+	 *  weekday, but a calendar can say "Last Teaching Day as per Tuesday
+	 *  Schedule", and it's Tuesday's classes that are held. */
+	weekday: number;
+};
 
-function parseDay(iso: string) {
-	const [y, m, d] = iso.split("-").map(Number);
-	return new Date(y, m - 1, d); // local, so "today" means the user's today
+export type Semester = {
+	/** first day of classes */
+	start: string;
+	/** last teaching day */
+	end: string;
+	days: TeachingDay[];
+};
+
+/** What the builder needs off each calendar row. */
+type CalendarRow = { date: string; text: string; category: string; label: string };
+
+const dow = (iso: string) => new Date(iso + "T00:00:00").getDay();
+const SCHEDULE_OF = /as per (\w{3})\w*day/i;
+
+/**
+ * Classes are held on a day unless the calendar says otherwise. Exams, breaks
+ * and Sundays are out; so are University Holidays, while Restricted Holidays
+ * are working days here (the university stays open, the classes run). A buffer
+ * day is out too, unless its own text says it's a buffer *for class*.
+ */
+function isTeaching(d: CalendarRow): boolean {
+	if (dow(d.date) === 0) return false;
+	if (d.category === "exam") return false;
+	if (d.category === "holiday") return d.label !== "University Holidays";
+	if (d.category === "break") return /buffer/i.test(d.text) && !/break/i.test(d.text);
+	return true;
 }
 
 /**
- * Weekdays still to come, today included (a class today hasn't happened yet).
- * Days that have already passed are subtracted from the semester's totals.
+ * Calendar rows → the semester's teaching days. The window runs from the day
+ * classes start to the last teaching day; anything the calendar prints outside
+ * that (the previous semester's tail, the exam fortnight, result dates) is not
+ * a day you attend a class on.
  */
-export function remainingDays(today = new Date(), start = SEM_START): Record<number, number> {
-	const cursor = parseDay(start);
-	const end = midnight(today);
-	const out: Record<number, number> = {};
-	for (const d of WEEKDAYS) out[d] = TEACHING_DAYS[d];
+export function semesterFrom(rows: CalendarRow[]): Semester {
+	const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
+	const start = sorted.find((d) => /start of classes/i.test(d.text))?.date ?? sorted[0]?.date ?? "";
+	const end = sorted.findLast((d) => /last teaching day/i.test(d.text))?.date ?? sorted.at(-1)?.date ?? "";
 
-	while (cursor < end) {
-		const day = cursor.getDay();
-		if (out[day] > 0) out[day] -= 1;
-		cursor.setDate(cursor.getDate() + 1);
+	const days: TeachingDay[] = [];
+	for (const d of sorted) {
+		if (d.date < start || d.date > end || !isTeaching(d)) continue;
+		const named = SCHEDULE_OF.exec(d.text)?.[1];
+		const weekday = named
+			? Object.entries(DAY_NAMES).find(([, n]) => n.toLowerCase() === named.toLowerCase())?.[0]
+			: undefined;
+		days.push({ date: d.date, weekday: weekday ? Number(weekday) : dow(d.date) });
 	}
+	return { start, end, days };
+}
+
+/** Per-weekday totals for the whole semester, however much of it is left. */
+export const countBy = (days: TeachingDay[]): Record<number, number> => {
+	const out: Record<number, number> = {};
+	for (const d of WEEKDAYS) out[d] = 0;
+	for (const d of days) if (out[d.weekday] !== undefined) out[d.weekday] += 1;
 	return out;
+};
+
+/**
+ * Weekdays still to come, today included — a class today hasn't happened yet.
+ * Unlike subtracting elapsed weekdays from a fixed total, this drops a holiday
+ * that's still ahead of you rather than counting it as a class you can attend.
+ */
+export function remainingDays(sem: Semester, today = new Date()): Record<number, number> {
+	const iso = today.toLocaleDateString("en-CA"); // local "today", not UTC
+	return countBy(sem.days.filter((d) => d.date >= iso));
 }
 
 export const totalDays = (days: Record<number, number>) =>
