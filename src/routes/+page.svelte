@@ -79,6 +79,14 @@
 			tag: "Academics",
 		},
 		{
+			title: "New Attendance Calculator",
+			hue: "yellow",
+			blurb: "Paste your SAMS report — every course read off it, waiver applied.",
+			href: "/new-attendance-calculator",
+			icon: "attendance",
+			tag: "Academics",
+		},
+		{
 			title: "Minors",
 			hue: "orange",
 			blurb: "Core courses, elective baskets, credit requirements.",

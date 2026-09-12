@@ -16,6 +16,7 @@
 		exam: "Exam Timetable",
 		gpa: "GPA Calculator",
 		minors: "Minors",
+		"new-attendance-calculator": "New Attendance Calculator",
 		"room-switch": "Room Switch",
 	};
 
