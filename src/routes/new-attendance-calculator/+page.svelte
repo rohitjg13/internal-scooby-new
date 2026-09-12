@@ -14,9 +14,23 @@
 	const KEY = "scooby.attendance.paste";
 	const PRESETS = [75, 70, 65, 50];
 
+	/** ISO dates are for storing, DD/MM/YYYY is for reading */
+	const dmy = (iso: string) => (iso ? iso.split("-").reverse().join("/") : "");
+
+	/** DD/MM/YYYY back to ISO; "" for anything half-typed or impossible */
+	function isoOf(text: string): string {
+		const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text.trim());
+		if (!m) return "";
+		const [d, mo, y] = m.slice(1).map(Number);
+		if (mo < 1 || mo > 12 || d < 1 || d > 31) return "";
+		return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+	}
+
 	let raw = $state("");
 	let target = $state(75);
-	let forgiveUntil = $state(FORGIVE_UNTIL);
+	// The native date input renders in the browser's locale, which can't be set
+	// from here, so the waiver date is a plain DD/MM/YYYY field instead.
+	let waiver = $state(dmy(FORGIVE_UNTIL));
 	/** "ECE301/LEC" → the weekdays you picked, overriding what the report showed */
 	let picks = $state<Record<string, number[]>>({});
 	/** course code → which components its card shows, once you've added or removed one */
@@ -50,7 +64,8 @@
 			const v = JSON.parse(saved);
 			if (typeof v.raw === "string") raw = v.raw;
 			if (typeof v.target === "number") target = v.target;
-			if (typeof v.forgiveUntil === "string") forgiveUntil = v.forgiveUntil;
+			if (typeof v.waiver === "string") waiver = v.waiver;
+			else if (typeof v.forgiveUntil === "string") waiver = dmy(v.forgiveUntil);
 			if (v.picks && typeof v.picks === "object") picks = v.picks;
 			if (v.shape && typeof v.shape === "object") shape = v.shape;
 			if (v.hours && typeof v.hours === "object") hours = v.hours;
@@ -61,9 +76,10 @@
 	});
 
 	$effect(() => {
-		localStorage.setItem(KEY, JSON.stringify({ raw, target, forgiveUntil, picks, shape, hours, counts }));
+		localStorage.setItem(KEY, JSON.stringify({ raw, target, waiver, picks, shape, hours, counts }));
 	});
 
+	const forgiveUntil = $derived(isoOf(waiver));
 	const rows = $derived(parseReport(raw));
 	const parsed = $derived(toCourses(rows, parseForgiveDate(forgiveUntil)));
 	// The report is the starting point: which components a course has, and which
@@ -160,38 +176,25 @@
 		</p>
 	</header>
 
-	<div class="warn">
-		<p>
-			Shiv Nadar IoE expects you at every scheduled class. Nothing below is an
-			allowance to skip — the only absences you're permitted are the ones covered
-			by a waiver you've actually been granted. This page just does the
-			arithmetic on where that leaves you.
-		</p>
-	</div>
-
-	<div class="howto">
-		<h2>Where to get the text</h2>
-		<p>
-			<a href="https://snulinks.snu.edu.in/" target="_blank" rel="noopener">SNU Links</a>
-			→ <b>Student Attendance Recording</b> → <b>Reports</b> →
-			<b>Course-wise Attendance View</b>. Select the whole page (Ctrl/Cmd + A),
-			copy it, and paste it in below. Nothing leaves your browser.
-		</p>
-	</div>
-
 	<section class="paste">
+		<p class="howto">
+			<a href="https://snulinks.snu.edu.in/" target="_blank" rel="noopener">SNU Links</a>
+			→ Student Attendance Recording → Reports → <b>Course-wise Attendance View</b>.
+			Select the whole page, copy, and paste it here. Nothing leaves your browser.
+		</p>
+
 		<textarea
 			class="input src"
-			rows={rows.length ? 3 : 10}
+			rows={rows.length ? 3 : 8}
 			spellcheck="false"
-			placeholder={"Paste the whole page here — headings and all.\n\nCourse Code\n17 Aug-1\n19 Aug-1\nCCC448 - LECCCF    P    A"}
+			placeholder={"Course Code\n17 Aug-1\n19 Aug-1\nCCC448 - LECCCF    P    A"}
 			bind:value={raw}
 		></textarea>
+
 		<div class="paste-foot">
 			{#if raw && !rows.length}
 				<span class="miss">
-					Couldn't find any course rows in that. Copy the whole report page, not
-					just a selection.
+					No course rows in that. Copy the whole report page, not just a selection.
 				</span>
 			{:else if rows.length}
 				<span class="found">
@@ -203,69 +206,81 @@
 				</span>
 			{/if}
 			{#if raw}
-				<button class="btn btn-sm" onclick={() => ((raw = ""), (picks = {}), (shape = {}))}>Clear</button>
+				<button class="btn btn-sm" onclick={() => ((raw = ""), (picks = {}), (shape = {}))}>
+					Clear
+				</button>
 			{/if}
 		</div>
 	</section>
 
 	<div class="bar">
-		<label for="target">Target</label>
-		<input
-			id="target"
-			class="input target-input"
-			type="number"
-			min="1"
-			max="100"
-			bind:value={target}
-		/>
-		<span class="pcnt">%</span>
-		<div class="presets">
+		<span class="bar-group">
+			<label for="target">Target</label>
+			<input
+				id="target"
+				class="input target-input"
+				type="number"
+				min="1"
+				max="100"
+				bind:value={target}
+			/>
+			<span class="pcnt">%</span>
 			{#each PRESETS as preset}
 				<button
 					class="btn btn-sm"
 					class:on={target === preset}
-					onclick={() => (target = preset)}>{preset}%</button
+					onclick={() => (target = preset)}>{preset}</button
 				>
 			{/each}
-		</div>
-	</div>
+		</span>
 
-	<div class="bar">
-		<label for="forgive">Credit absences up to</label>
-		<input id="forgive" class="input date-input" type="date" bind:value={forgiveUntil} />
-		{#if forgiveUntil}
-			<button class="btn btn-sm" onclick={() => (forgiveUntil = "")}>Turn off</button>
-		{:else}
-			<button class="btn btn-sm" onclick={() => (forgiveUntil = FORGIVE_UNTIL)}>
-				Back to {FORGIVE_UNTIL}
-			</button>
-		{/if}
-	</div>
+		<span class="bar-sep"></span>
 
-	{#if courses.length > set.length}
-		<div class="warn warn-hot">
-			<p>
-				<b>Fill in the "Hour / class" box on every component.</b> The report counts
-				classes, not hours, and a two-hour practical weighs twice what a lecture
-				does. A course total stays hidden until every one of its components has
-				that number, rather than quietly assuming one hour and getting it wrong.
-			</p>
-		</div>
-	{/if}
+		<span class="bar-group">
+			<label for="waiver">Waiver up to</label>
+			<input
+				id="waiver"
+				class="input date-input"
+				class:bad-date={waiver.trim() !== "" && !forgiveUntil}
+				type="text"
+				inputmode="numeric"
+				placeholder="DD/MM/YYYY"
+				bind:value={waiver}
+			/>
+			{#if waiver}
+				<button class="btn btn-sm" onclick={() => (waiver = "")}>Off</button>
+			{:else}
+				<button class="btn btn-sm" onclick={() => (waiver = dmy(FORGIVE_UNTIL))}>
+					{dmy(FORGIVE_UNTIL)}
+				</button>
+			{/if}
+		</span>
+	</div>
 
 	{#if courses.length}
-		<section class="tally">
-			<span class="tally-n">
-				{#if set.length}{set.length - below}<span class="tally-of">/{set.length}</span>{:else}—{/if}
-			</span>
-			<span class="tally-label">
-				courses at or above {target}%
-				<span class="tally-sub">
-					{#if courses.length > set.length}{courses.length - set.length} still waiting on class
-						hours{:else}{forgiven} absence{forgiven === 1 ? "" : "s"} credited{/if} ·
-					{totalDays(left)} teaching days left since {SEM_START}
+		{@const waiting = courses.length - set.length}
+		<section class="tally" class:waiting={waiting > 0}>
+			{#if waiting}
+				<span class="tally-n">{waiting}</span>
+				<span class="tally-label">
+					<span>course{waiting === 1 ? "" : "s"} still need an <b>Hour / class</b></span>
+					<span class="tally-sub">
+						A two-hour practical weighs twice what a lecture does, so a course total
+						waits for that number rather than assuming one hour and getting it wrong.
+					</span>
 				</span>
-			</span>
+			{:else}
+				<span class="tally-n">
+					{set.length - below}<span class="tally-of">/{set.length}</span>
+				</span>
+				<span class="tally-label">
+					courses at or above {target}%
+					<span class="tally-sub">
+						{forgiven} absence{forgiven === 1 ? "" : "s"} credited ·
+						{totalDays(left)} teaching days left since {dmy(SEM_START)}
+					</span>
+				</span>
+			{/if}
 		</section>
 	{/if}
 
@@ -432,9 +447,7 @@
 					</div>
 					{#if !ok}
 						<div class="range">
-							<span class="needs">
-								Set how long a class runs, above, and this course's total appears.
-							</span>
+							<span class="needs">Fill in <b>Hour / class</b> and this total appears.</span>
 						</div>
 					{:else}
 					<div class="range">
@@ -446,7 +459,7 @@
 
 				<p class="verdict" class:bad={s.impossible}>
 					{#if !ok}
-						Hours not set yet.
+						&nbsp;
 					{:else if s.impossible}
 						Can't reach {target}% any more — best you can finish at is {fmt(s.best)}%.
 					{:else if s.mustAttend > 0}
@@ -489,6 +502,12 @@
 			day is the same thing: give it two hours.
 		</p>
 		<p>
+			Shiv Nadar IoE expects you at every scheduled class. Nothing here is an
+			allowance to skip — the only absences you're permitted are the ones covered
+			by a waiver you've actually been granted. This page just does the arithmetic
+			on where that leaves you.
+		</p>
+		<p>
 			LEC, TUT and PRAC are added up, since attendance is judged on the course
 			total. A tutorial and a practical on the same day stay separate — the
 			report gives each its own row, so each keeps its own P and A.
@@ -518,48 +537,22 @@
 		max-width: 60ch;
 	}
 
-	.warn-hot {
-		border-color: var(--bad);
-		color: var(--text-secondary);
-		margin: 0 0 1rem;
-	}
-
-	.warn-hot b {
-		color: var(--text);
-	}
-
 	.needs {
 		color: var(--bad);
 		max-width: 30ch;
 	}
 
-	.warn {
-		border: 1px solid var(--border);
-		border-radius: var(--radius);
-		background: var(--bg-card);
-		padding: 0.85rem 1rem;
-		margin-bottom: 0.75rem;
-		font-size: 0.8rem;
-		line-height: 1.6;
-		color: var(--text-secondary);
+	.needs b {
+		color: var(--bad);
+		font-weight: 500;
 	}
 
 	.howto {
-		border: 1px dashed var(--border-hover);
-		border-radius: var(--radius);
-		padding: 0.85rem 1rem;
-		margin-bottom: 1.25rem;
-		font-size: 0.8rem;
-		line-height: 1.7;
+		margin-bottom: 0.5rem;
+		font-size: 0.76rem;
+		line-height: 1.6;
 		color: var(--text-muted);
-	}
-
-	.howto h2 {
-		font-size: 0.72rem;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		color: var(--text-secondary);
-		margin-bottom: 0.3rem;
+		max-width: 72ch;
 	}
 
 	.howto b {
@@ -612,37 +605,65 @@
 
 	.bar {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.5rem;
-		margin-bottom: 1rem;
-		font-size: 0.85rem;
+		gap: 0.5rem 0.9rem;
+		margin-bottom: 1.25rem;
+		font-size: 0.8rem;
 		color: var(--text-secondary);
 	}
 
+	.bar-group {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+
+	.bar-sep {
+		width: 1px;
+		align-self: stretch;
+		background: var(--border);
+	}
+
+	.bar-group .btn {
+		padding-inline: 0.6rem;
+	}
+
+	.bar-group .on {
+		background: var(--text);
+		color: var(--bg);
+		border-color: var(--text);
+	}
+
 	.target-input {
-		width: 5rem;
+		width: 4rem;
+		padding-inline: 0.5rem;
+		text-align: center;
+		appearance: textfield;
+		-moz-appearance: textfield;
+	}
+
+	/* the spinner eats the room the number needs */
+	.target-input::-webkit-outer-spin-button,
+	.target-input::-webkit-inner-spin-button {
+		appearance: none;
+		margin: 0;
+	}
+
+	.bad-date {
+		border-color: var(--bad);
+		color: var(--bad);
 	}
 
 	.date-input {
-		width: 11rem;
+		width: 8.5rem;
+		padding-inline: 0.6rem;
 		font-family: var(--font-mono);
 		font-size: 0.8rem;
 	}
 
 	.pcnt {
 		margin-left: -0.25rem;
-	}
-
-	.presets {
-		display: flex;
-		gap: 0.4rem;
-		margin-left: auto;
-	}
-
-	.presets .on {
-		background: var(--text);
-		color: var(--bg);
-		border-color: var(--text);
 	}
 
 	/* headline count, cut like the semester box on the other calculator */
@@ -677,7 +698,18 @@
 
 	.tally-sub {
 		font-size: 0.68rem;
+		line-height: 1.5;
 		color: var(--text-muted);
+		max-width: 70ch;
+	}
+
+	.tally.waiting {
+		border-color: var(--bad);
+	}
+
+	.tally.waiting .tally-n,
+	.tally.waiting b {
+		color: var(--bad);
 	}
 
 	.cards {
@@ -1024,17 +1056,21 @@
 		}
 
 		.bar {
-			flex-wrap: wrap;
-			row-gap: 0.6rem;
+			gap: 0.5rem;
 		}
 
-		.presets {
-			margin-left: 0;
+		.bar-sep {
+			display: none;
+		}
+
+		.bar-group {
 			flex: 1 0 100%;
 		}
 
-		.presets .btn {
+		/* the field takes whatever the label and button leave */
+		.date-input {
 			flex: 1;
+			width: auto;
 		}
 
 		.grid-head {
