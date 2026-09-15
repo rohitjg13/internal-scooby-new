@@ -47,8 +47,14 @@
 	let backfill = $state(true);
 	/** which pickers you've opened or closed by hand; the rest follow hasHrs */
 	let opened = $state<Record<string, boolean>>({});
+	/** CCC course code → runs only the first half of the semester */
+	let halfSem = $state<Record<string, boolean>>({});
 
 	const left = $derived(remainingDays(data.semester));
+	// a first-half CCC stops where the calendar says the first half finishes
+	const leftHalf = $derived(remainingDays(data.semester, new Date(), data.semester.half));
+	const isCcc = (id: string) => id.startsWith("CCC") && data.semester.half !== "";
+	const leftFor = (id: string) => (isCcc(id) && halfSem[id] ? leftHalf : left);
 	const key = (id: string, type: ComponentType) => `${id}/${type}`;
 	const HOURS = [1, 1.5, 2, 3];
 	const COUNTS = ["attended", "missed", "leaves", "remaining"] as const;
@@ -77,13 +83,14 @@
 			if (v.hours && typeof v.hours === "object") hours = v.hours;
 			if (v.counts && typeof v.counts === "object") counts = v.counts;
 			if (typeof v.backfill === "boolean") backfill = v.backfill;
+			if (v.halfSem && typeof v.halfSem === "object") halfSem = v.halfSem;
 		} catch {
 			// corrupt blob, start clean
 		}
 	});
 
 	$effect(() => {
-		localStorage.setItem(KEY, JSON.stringify({ raw, target, waiver, picks, shape, hours, counts, backfill }));
+		localStorage.setItem(KEY, JSON.stringify({ raw, target, waiver, picks, shape, hours, counts, backfill, halfSem }));
 	});
 
 	const forgiveUntil = $derived(isoOf(waiver));
@@ -119,7 +126,8 @@
 						missed: counts[`${key(c.id, t)}/missed`] ?? base.missed,
 						leaves: counts[`${key(c.id, t)}/leaves`] ?? base.leaves,
 						hrs: hours[key(c.id, t)] ?? base.hrs,
-						remaining: counts[`${key(c.id, t)}/remaining`] ?? classesLeft(days, left)
+						remaining:
+							counts[`${key(c.id, t)}/remaining`] ?? classesLeft(days, leftFor(c.id))
 					};
 				})
 			};
@@ -148,6 +156,14 @@
 		// the days are back in charge of "Left" now
 		const { [`${key(id, type)}/remaining`]: _, ...rest } = counts;
 		counts = rest;
+	}
+
+	function toggleHalf(c: ParsedCourse) {
+		halfSem = { ...halfSem, [c.id]: !halfSem[c.id] };
+		// a typed-over "Left" was for the other length of course; the calendar takes it back
+		const out = { ...counts };
+		for (const k of c.components) delete out[`${key(c.id, k.type)}/remaining`];
+		counts = out;
 	}
 
 	const setTypes = (c: ParsedCourse, types: ComponentType[]) =>
@@ -316,6 +332,19 @@
 				<div class="card-head">
 					<h2 class="name">{course.name}</h2>
 					<span class="sections">{course.sections.join(" · ")}</span>
+					{#if isCcc(course.id)}
+						<label
+							class="check half"
+							title="Counts only up to {dmy(data.semester.half)}, when the first half finishes"
+						>
+							<input
+								type="checkbox"
+								checked={!!halfSem[course.id]}
+								onchange={() => toggleHalf(course)}
+							/>
+							Half-sem CCC
+						</label>
+					{/if}
 				</div>
 
 				<div class="grid grid-head">
@@ -419,9 +448,9 @@
 										class:on={comp.days.includes(d)}
 										onclick={() => toggleDay(course.id, comp.type, comp.days, d)}
 										aria-pressed={comp.days.includes(d)}
-										title="{left[d]} {DAY_NAMES[d]}s left this semester"
+										title="{leftFor(course.id)[d]} {DAY_NAMES[d]}s left"
 									>
-										{DAY_NAMES[d]}<span class="d-n">{left[d]}</span>
+										{DAY_NAMES[d]}<span class="d-n">{leftFor(course.id)[d]}</span>
 									</button>
 								{/each}
 							</div>
@@ -509,6 +538,12 @@
 			report begins, as attended. It stops at the waiver date, so a course that
 			genuinely started later in the term doesn't collect classes it never held.
 			Turn it off if your course did start late.
+		</p>
+		<p>
+			<b>Half-sem CCC</b> — tick it on a CCC that only runs the first half of the
+			semester, and its Left stops at {dmy(data.semester.half)}, when the calendar
+			says the first half finishes. Leave it unticked and the course runs to the
+			end of the semester like any other.
 		</p>
 		<p>
 			<b>Left</b> comes from the days under each component: the report's own
@@ -775,9 +810,17 @@
 
 	.card-head {
 		display: flex;
-		gap: 0.75rem;
+		flex-wrap: wrap;
+		gap: 0.4rem 0.75rem;
 		align-items: baseline;
 		margin-bottom: 1rem;
+	}
+
+	.half {
+		display: flex;
+		align-items: center;
+		font-size: 0.72rem;
+		color: var(--text-secondary);
 	}
 
 	.name {
@@ -1102,17 +1145,7 @@
 			gap: 0.5rem;
 		}
 
-		.check {
-		gap: 0.35rem;
-		cursor: pointer;
-	}
-
-	.check input {
-		accent-color: var(--text);
-		cursor: pointer;
-	}
-
-	.bar-sep {
+		.bar-sep {
 			display: none;
 		}
 

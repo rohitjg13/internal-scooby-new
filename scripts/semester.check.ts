@@ -12,7 +12,7 @@ const rows = [
 	{ date: "2026-08-19", text: "", category: "event", label: "" },
 	{ date: "2026-08-20", text: "Raksha Bandhan", category: "holiday", label: "Restricted Holidays" },
 	{ date: "2026-08-21", text: "Gandhi Jayanti", category: "holiday", label: "University Holidays" },
-	{ date: "2026-08-22", text: "", category: "event", label: "" },
+	{ date: "2026-08-22", text: "First Half Finishes", category: "deadline", label: "" },
 	{ date: "2026-08-23", text: "", category: "event", label: "" }, // Sunday
 	{ date: "2026-08-24", text: "Mid Term Examinations", category: "exam", label: "" },
 	{ date: "2026-08-25", text: "Buffer day for class", category: "break", label: "" },
@@ -55,6 +55,15 @@ assert.deepEqual(remainingDays(sem, on("2026-08-17")), countBy(sem.days));
 // today still counts — Monday the 17th is not yet spent
 assert.equal(remainingDays(sem, on("2026-08-17"))[1], 1);
 assert.equal(remainingDays(sem, on("2026-08-18"))[1], 0);
+
+// the first half's end is read off the calendar, and a half-semester course
+// stops counting there: from Tue 18, only Tue 18, Wed 19, Thu 20 and Sat 22 remain
+assert.equal(sem.half, "2026-08-22");
+assert.equal(totalDays(remainingDays(sem, on("2026-08-18"), sem.half)), 4);
+// once that day has gone there's nothing left of a half-semester course at all
+assert.equal(totalDays(remainingDays(sem, on("2026-08-25"), sem.half)), 0);
+// a calendar that doesn't mark a first half has no cut-off to offer
+assert.equal(semesterFrom(rows.filter((r) => r.date !== "2026-08-22")).half, "");
 
 // Sunday the 23rd and Monday the 24th see the same past: nothing is held between
 assert.deepEqual(remainingDays(sem, on("2026-08-23")), remainingDays(sem, on("2026-08-24")));

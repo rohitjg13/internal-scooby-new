@@ -32,6 +32,8 @@ export type Semester = {
 	start: string;
 	/** last teaching day */
 	end: string;
+	/** the day the first half finishes — where a half-semester CCC stops; "" if the calendar doesn't say */
+	half: string;
 	days: TeachingDay[];
 };
 
@@ -65,6 +67,7 @@ export function semesterFrom(rows: CalendarRow[]): Semester {
 	const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
 	const start = sorted.find((d) => /start of classes/i.test(d.text))?.date ?? sorted[0]?.date ?? "";
 	const end = sorted.findLast((d) => /last teaching day/i.test(d.text))?.date ?? sorted.at(-1)?.date ?? "";
+	const half = sorted.find((d) => /first half finishes/i.test(d.text))?.date ?? "";
 
 	const days: TeachingDay[] = [];
 	for (const d of sorted) {
@@ -75,7 +78,7 @@ export function semesterFrom(rows: CalendarRow[]): Semester {
 			: undefined;
 		days.push({ date: d.date, weekday: weekday ? Number(weekday) : dow(d.date) });
 	}
-	return { start, end, days };
+	return { start, end, half, days };
 }
 
 /** Per-weekday totals for the whole semester, however much of it is left. */
@@ -90,10 +93,15 @@ export const countBy = (days: TeachingDay[]): Record<number, number> => {
  * Weekdays still to come, today included — a class today hasn't happened yet.
  * Unlike subtracting elapsed weekdays from a fixed total, this drops a holiday
  * that's still ahead of you rather than counting it as a class you can attend.
+ * `until` cuts the count off early, for a course that ends before the semester.
  */
-export function remainingDays(sem: Semester, today = new Date()): Record<number, number> {
+export function remainingDays(
+	sem: Semester,
+	today = new Date(),
+	until = ""
+): Record<number, number> {
 	const iso = today.toLocaleDateString("en-CA"); // local "today", not UTC
-	return countBy(sem.days.filter((d) => d.date >= iso));
+	return countBy(sem.days.filter((d) => d.date >= iso && (!until || d.date <= until)));
 }
 
 export const totalDays = (days: Record<number, number>) =>
