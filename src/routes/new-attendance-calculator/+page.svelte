@@ -60,8 +60,9 @@
 	const COUNTS = ["attended", "missed", "leaves", "remaining"] as const;
 	type CountField = (typeof COUNTS)[number];
 	// Until you say how long a class runs, there's no honest course total to show:
-	// one hour per class is a guess, and a two-hour practical makes it a wrong one.
-	const hasHrs = (id: string, type: ComponentType) => key(id, type) in hours;
+	// one hour per class is a guess, and a two-hour lecture makes it a wrong one.
+	// A practical always counts as one hour, so there's nothing to ask about it.
+	const hasHrs = (id: string, type: ComponentType) => type === "PRAC" || key(id, type) in hours;
 	const ready = (c: ParsedCourse) => c.components.every((k) => hasHrs(c.id, k.type));
 
 	// Closed until you open it. Has to be remembered rather than derived, or every
@@ -125,7 +126,7 @@
 						attended: counts[`${key(c.id, t)}/attended`] ?? base.attended,
 						missed: counts[`${key(c.id, t)}/missed`] ?? base.missed,
 						leaves: counts[`${key(c.id, t)}/leaves`] ?? base.leaves,
-						hrs: hours[key(c.id, t)] ?? base.hrs,
+						hrs: t === "PRAC" ? 1 : (hours[key(c.id, t)] ?? base.hrs),
 						remaining:
 							counts[`${key(c.id, t)}/remaining`] ?? classesLeft(days, leftFor(c.id))
 					};
@@ -300,7 +301,7 @@
 				<span class="tally-label">
 					<span>course{waiting === 1 ? "" : "s"} still need an <b>Hour / class</b></span>
 					<span class="tally-sub">
-						A two-hour practical weighs twice what a lecture does, so a course total
+						A two-hour lecture weighs twice what a one-hour one does, so a course total
 						waits for that number rather than assuming one hour and getting it wrong.
 					</span>
 				</span>
@@ -404,6 +405,12 @@
 								oninput={(e) => setCount(course.id, comp.type, "leaves", +e.currentTarget.value)}
 							/>
 						</label>
+						{#if comp.type === "PRAC"}
+							<span class="cell hrs-cell" title="A practical always counts as one hour">
+								<span class="m-label">Hour / class</span>
+								<span class="mono fixed-hr">1</span>
+							</span>
+						{:else}
 						<label class="cell hrs-cell" class:unset={!hrsSet}>
 							<span class="m-label">Hour / class</span>
 							<!-- a dropdown, not a number box: a scroll wheel passing over it can't change it -->
@@ -423,6 +430,7 @@
 								{/if}
 							</select>
 						</label>
+						{/if}
 						<span class="col-pct mono" class:bad={cs.current !== null && cs.current < target}>
 							{cs.current === null ? "—" : fmt(cs.current) + "%"}
 						</span>
@@ -570,10 +578,11 @@
 			your percentage actually is.
 		</p>
 		<p>
-			<b>Hour / class</b> — how long one class of that component runs. Nothing is
-			assumed, so the box starts empty and the course total waits for it. Every
-			total on the card is then in hours. A component that meets twice on the same
-			day is the same thing: give it two hours.
+			<b>Hour / class</b> — how long one lecture or tutorial runs. Nothing is
+			assumed, so the box starts on "?" and the course total waits for it. A
+			practical always counts as one hour, so it has no box. Every total on the card
+			is in hours. A lecture that meets twice on the same day is the same thing:
+			give it two hours.
 		</p>
 		<p>
 			Shiv Nadar IoE expects you at every scheduled class. Nothing here is an
@@ -883,6 +892,16 @@
 	.hrs-cell.unset .n {
 		border-color: var(--bad);
 		color: var(--bad);
+	}
+
+	/* matches the height of the dropdowns beside it, so the row doesn't jump */
+	.fixed-hr {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		min-height: 2.1rem;
+		font-size: 0.8rem;
 	}
 
 	.hrs-sel {
