@@ -56,7 +56,7 @@
 	const isCcc = (id: string) => id.startsWith("CCC") && data.semester.half !== "";
 	const leftFor = (id: string) => (isCcc(id) && halfSem[id] ? leftHalf : left);
 	const key = (id: string, type: ComponentType) => `${id}/${type}`;
-	const HOURS = [1, 1.5, 2, 3];
+	const HOURS = [1, 1.5, 2, 2.5, 3];
 	const COUNTS = ["attended", "missed", "leaves", "remaining"] as const;
 	type CountField = (typeof COUNTS)[number];
 	// Until you say how long a class runs, there's no honest course total to show:
@@ -406,16 +406,22 @@
 						</label>
 						<label class="cell hrs-cell" class:unset={!hrsSet}>
 							<span class="m-label">Hour / class</span>
-							<input
-								class="input n"
-								type="number"
-								min="0"
-								step="0.5"
-								placeholder="?"
+							<!-- a dropdown, not a number box: a scroll wheel passing over it can't change it -->
+							<select
+								class="input n hrs-sel"
 								title="How long one {comp.type} class runs. Nothing is assumed — set it."
-								value={hrsSet ? comp.hrs : ""}
-								oninput={(e) => setHrs(course.id, comp.type, +e.currentTarget.value)}
-							/>
+								value={hrsSet ? String(comp.hrs) : ""}
+								onchange={(e) => setHrs(course.id, comp.type, +e.currentTarget.value)}
+							>
+								<option value="" disabled>?</option>
+								{#each HOURS as h}
+									<option value={String(h)}>{h}</option>
+								{/each}
+								{#if hrsSet && !HOURS.includes(comp.hrs)}
+									<!-- saved back when this was a free number box -->
+									<option value={String(comp.hrs)}>{comp.hrs}</option>
+								{/if}
+							</select>
 						</label>
 						<span class="col-pct mono" class:bad={cs.current !== null && cs.current < target}>
 							{cs.current === null ? "—" : fmt(cs.current) + "%"}
@@ -879,9 +885,14 @@
 		color: var(--bad);
 	}
 
-	.hrs-cell.unset .n::placeholder {
-		color: var(--bad);
-		opacity: 0.8;
+	.hrs-sel {
+		cursor: pointer;
+		text-align-last: center;
+	}
+
+	/* the list itself shouldn't inherit the unset field's red */
+	.hrs-sel option {
+		color: var(--text);
 	}
 
 	.n {
